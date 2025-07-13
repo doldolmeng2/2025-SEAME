@@ -65,6 +65,15 @@ int main(int argc, char** argv) {
                 }
             }
 
+            // 시각화 조건부 처리
+            if (VIEWER && !frame.empty()) {
+                cv::imshow("Camera View", frame);
+                if (cv::waitKey(1) == 27) {
+                    running.store(false);
+                    break;
+                }
+            }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -77,7 +86,6 @@ int main(int argc, char** argv) {
 
     // 차후 여기에 lane_detector, object_detector, control 등 스레드 추가 예정
 
-    // 종료 대기 (Ctrl+C 시나리오 등 구현 필요)
     camera_thread.join();
 
     std::cout << "[INFO] 프로그램 종료\n";

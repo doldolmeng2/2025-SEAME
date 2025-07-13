@@ -1,5 +1,7 @@
 // usb_cam.cpp (리팩터링: 클래스 기반, main 제거)
 #include "usb_cam.hpp"
+#include "constants.hpp"
+
 #include <iostream>
 #include <cstring>
 #include <fcntl.h>
@@ -11,7 +13,7 @@ bool USBCam::init() {
         "v4l2src device=/dev/video0 ! "
         "bayer2rgb ! "
         "videoconvert ! "
-        "videoscale ! video/x-raw,width=320,height=200 ! "
+        "videoscale ! video/x-raw,width=640,height=240 ! "
         "appsink";
 
     cap.open(pipeline, cv::CAP_GSTREAMER);

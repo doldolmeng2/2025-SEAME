@@ -17,4 +17,4 @@ constexpr int YELLOW_H_MIN = 20;
 constexpr int YELLOW_H_MAX = 40;
 
 // 디버깅 모드에서 시각화 표시 여부
-constexpr bool ENABLE_DEBUG_VIEW = false;
+constexpr bool VIEWER = true;

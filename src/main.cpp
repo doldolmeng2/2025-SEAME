@@ -14,6 +14,7 @@
 
 #include "usb_cam.hpp"
 #include "video_recorder.hpp"
+#include "lane_detector.hpp"
 #include "constants.hpp"
 
 std::shared_ptr<cv::Mat> shared_frame = nullptr;
@@ -103,14 +104,12 @@ int main(int argc, char** argv) {
                 recorder.write(frame);
             }
 
-    
             if (VIEWER) {
                 cv::imshow("Live", frame);
                 if (cv::waitKey(1) == 27) {
                     running = false;
                 }
             }
-
 
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
@@ -121,8 +120,28 @@ int main(int argc, char** argv) {
         first_frame_cv.wait(lock, [] { return first_frame_ready; });
     }
 
+    std::thread lane_thread;
+    if (current_mode == Mode::DRIVE || current_mode == Mode::DRIVE_RECORD) {
+        lane_thread = std::thread([&]() {
+            LaneDetector detector;
+            while (running.load()) {
+                std::shared_ptr<cv::Mat> frame_copy;
+                {
+                    std::lock_guard<std::mutex> lock(frame_mutex);
+                    frame_copy = shared_frame;
+                }
+                if (frame_copy && !frame_copy->empty()) {
+                    detector.process(*frame_copy);
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        });
+    }
+
     camera_thread.join();
+    if (lane_thread.joinable()) lane_thread.join();
     recorder.release();
+
     std::cout << "[INFO] 프로그램 종료\n";
     return 0;
 }

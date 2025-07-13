@@ -1,5 +1,7 @@
 // lane_detector.cpp
+#include <opencv2/opencv.hpp>
 #include "lane_detector.hpp"
+#include "constants.hpp"
 #include <iostream>
 
 int LaneDetector::process(const cv::Mat& frame) {
@@ -23,12 +25,10 @@ int LaneDetector::process(const cv::Mat& frame) {
     grayscale.setTo(255, white_mask);
     grayscale.setTo(127, yellow_mask);
 
-#ifdef VIEWER
     if (VIEWER) {
         cv::imshow("Lane Detection", grayscale);
         cv::waitKey(1);
     }
-#endif
 
     // 추후 조향값 계산 로직 추가 예정
     return 0;

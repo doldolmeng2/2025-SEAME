@@ -4,7 +4,6 @@
 
 #include <chrono>
 #include <vector>
-#include <pybind11/embed.h>  // pybind11 임포트 필요
 
 enum class DriveState {
     DRIVE,
@@ -30,7 +29,9 @@ private:
     float steering_;
     float throttle_;
 
-    pybind11::object piracer_;  // ← Python 객체를 위한 멤버 추가
+    // pybind11 관련 멤버는 cpp 파일에서만 정의
+    struct Impl;
+    Impl* impl_;
 };
 
 #endif

@@ -1,15 +1,15 @@
-// control.cpp
 #include "control.hpp"
 #include "constants.hpp"
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-#include <pybind11/embed.h>  // pybind11 임베드 모드 사용
+#include <pybind11/embed.h>
 
 namespace py = pybind11;
 using namespace std::chrono;
 
-struct Controller::Impl {
+// 내부 Impl 정의 (py::object 감싸기)
+struct __attribute__((visibility("hidden"))) Controller::Impl {
     py::object piracer_;
 };
 
@@ -17,12 +17,12 @@ Controller::Controller()
     : drive_state_(DriveState::DRIVE),
       steering_(-0.25f),
       throttle_(0.0f),
-      impl_(new Impl())  // ✅ impl_ 초기화
+      impl_(new Impl())  // 🔥 Impl 생성
 {
     try {
         py::initialize_interpreter();
         py::module_ piracer_module = py::module_::import("piracer.vehicles");
-        impl_->piracer_ = piracer_module.attr("PiracerPro")();
+        impl_->piracer_ = piracer_module.attr("PiRacerPro")();
         std::cout << "[INFO] Python PiracerPro 객체 생성 완료" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Python 초기화 실패: " << e.what() << std::endl;
@@ -61,8 +61,8 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     steering_ = computeSteering(cross_offset);
 
     try {
-        piracer_.attr("set_steering_percent")(steering_);
-        piracer_.attr("set_throttle_percent")(throttle_);
+        impl_->piracer_.attr("set_steering_percent")(steering_);
+        impl_->piracer_.attr("set_throttle_percent")(throttle_);
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Python 제어 실패: " << e.what() << std::endl;
     }

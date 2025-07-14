@@ -133,26 +133,26 @@ int main(int argc, char** argv) {
                     frame_copy = shared_frame;
                 }
                 if (frame_copy && !frame_copy->empty()) {
-				            cv::Mat vis_out;
-				            std::vector<bool> detections_flags;
-				            int cross_point_offset = lanedetector.process(*frame_copy, vis_out); // 차선 교점과 화면 중앙 사이의 거리(교점이 화면 중앙 기준으로 오른쪽이면 +, 왼쪽이면 -)
-                            objectdetector.process(*frame_copy, vis_out, detections_flags);
-				            // 디버그용 출력
-				            // std::cout << "[Drive] 조향각: " << angle;
-				            if (!detections_flags.empty()) {
-				                if (detections_flags[0]) std::cout << " | 정지선 감지";
-				                if (detections_flags[1]) std::cout << " | 횡단보도 감지";
-				                if (detections_flags[2]) std::cout << " | 출발선 감지";
-				            }
-				            std::cout << "\n";
-				
-				            if (VIEWER) {
-				                cv::imshow("Processed View", vis_out);
-				                if (cv::waitKey(1) == 27) {
-				                    running = false;
-				                }
-				            }
-				        }
+                        cv::Mat vis_out;
+                        std::vector<bool> detections_flags;
+                        int cross_point_offset = lanedetector.process(*frame_copy, vis_out); // 차선 교점과 화면 중앙 사이의 거리(교점이 화면 중앙 기준으로 오른쪽이면 +, 왼쪽이면 -)
+                        objectdetector.process(*frame_copy, vis_out, detections_flags);
+                        // 디버그용 출력
+                        // std::cout << "[Drive] 조향각: " << angle;
+                        // if (!detections_flags.empty()) {
+                        //     if (detections_flags[0]) std::cout << " | 정지선 감지";
+                        //     if (detections_flags[1]) std::cout << " | 횡단보도 감지";
+                        //     if (detections_flags[2]) std::cout << " | 출발선 감지";
+                        // }
+                        // std::cout << "\n";
+            
+                        if (VIEWER) {
+                            cv::imshow("Processed View", vis_out);
+                            if (cv::waitKey(1) == 27) {
+                                running = false;
+                            }
+                        }
+                    }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         });

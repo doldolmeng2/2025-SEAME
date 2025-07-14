@@ -30,9 +30,20 @@ Controller::Controller()
 }
 
 Controller::~Controller() {
+    try {
+        if (impl_ && impl_->piracer_) {
+            impl_->piracer_.attr("set_throttle_percent")(0.0f);  // 모터 정지
+            impl_->piracer_.attr("set_steering_percent")(0.0f);  // 조향 중립화
+            std::cout << "[INFO] 종료 전 모터 정지 명령 전송" << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] 종료 시 모터 정지 실패: " << e.what() << std::endl;
+    }
+
     delete impl_;
     py::finalize_interpreter();
 }
+
 
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset) {
     if (drive_state_ == DriveState::DRIVE) {

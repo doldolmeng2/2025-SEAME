@@ -55,7 +55,7 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
         cv::Point pt = computeIntersection(poly_left, poly_right, valid_inter);
         if (valid_inter) {
             int center_x = width / 2;
-            int cross_point_offset = (pt.x - center_x) * 100 / center_x;
+            int cross_point_offset = pt.x - center_x;
             cv::circle(vis_out, pt, 5, cv::Scalar(255, 0, 0), -1);
             cv::putText(vis_out, "x=" + std::to_string(pt.x), pt - cv::Point(0, 20),
                         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 0), 2);

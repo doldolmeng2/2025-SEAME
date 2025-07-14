@@ -88,15 +88,22 @@ bool ObjectDetector::detectStopLine(const cv::Mat& grayscale, cv::Mat& vis_out, 
     for (int i = 1; i < num_labels; ++i) {
         cv::Mat mask = (labels == i);
         bool valid = true;
-
+        
         for (int y = 0; y < mask.rows; ++y) {
-            cv::Mat row = mask.row(y);
-            int transitions = cv::countNonZero(row != cv::Mat(row.cols - 1, 1, row.type(), row.at<uchar>(0)));
+            uchar* row_ptr = mask.ptr<uchar>(y);
+            int transitions = 0;
+            for (int x = 1; x < mask.cols; ++x) {
+                if (row_ptr[x] != row_ptr[x - 1]) {
+                    ++transitions;
+                }
+            }
+
             if (transitions >= max_transitions) {
                 valid = false;
                 break;
             }
         }
+
 
         if (!valid) continue;
 

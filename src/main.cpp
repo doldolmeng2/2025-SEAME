@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
     std::thread lane_thread;
     if (current_mode == Mode::DRIVE || current_mode == Mode::DRIVE_RECORD) {
         lane_thread = std::thread([&]() {
-            LaneDetector detector;
+            LaneDetector lanedetector;
             while (running.load()) {
                 std::shared_ptr<cv::Mat> frame_copy;
                 {
@@ -131,8 +131,26 @@ int main(int argc, char** argv) {
                     frame_copy = shared_frame;
                 }
                 if (frame_copy && !frame_copy->empty()) {
-                    detector.process(*frame_copy);
-                }
+				            cv::Mat vis_out;
+				            std::vector<bool> detections;
+				            int cross_point_offset = lanedetector.process(*frame_copy, vis_out); // 차선 교점과 화면 중앙 사이의 거리(교점이 화면 중앙 기준으로 오른쪽이면 +, 왼쪽이면 -)
+
+				            // 디버그용 출력
+				            // std::cout << "[Drive] 조향각: " << angle;
+				            // if (!detections.empty()) {
+				            //     if (detections[0]) std::cout << " | 정지선 감지";
+				            //     if (detections[1]) std::cout << " | 횡단보도 감지";
+				            //     if (detections[2]) std::cout << " | 출발선 감지";
+				            // }
+				            std::cout << "\n";
+				
+				            if (VIEWER) {
+				                cv::imshow("Processed View", vis_out);
+				                if (cv::waitKey(1) == 27) {
+				                    running = false;
+				                }
+				            }
+				        }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         });

@@ -61,6 +61,8 @@ std::string getTimestampedFilename(const std::string& base_dir) {
 }
 
 int main(int argc, char** argv) {
+    gpioInitialise();
+
     signal(SIGINT, signal_handler);
 
     if (argc < 2) {
@@ -230,5 +232,6 @@ int main(int argc, char** argv) {
     recorder.release();
 
     std::cout << "[INFO] 프로그램 종료\n";
+    gpioTerminate();
     return 0;
 }

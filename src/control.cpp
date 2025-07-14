@@ -8,7 +8,11 @@
 using namespace std::chrono;
 
 Controller::Controller()
-    : drive_state_(DriveState::DRIVE), steering_(0.0f), throttle_(0.0f) {}
+    : drive_state_(DriveState::DRIVE),
+      steering_(0.0f),
+      throttle_(0.0f),
+      vehicle_(std::make_shared<PiRacer>())  // ✅ 여기에서 생성
+{}
 
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset) {
     if (drive_state_ == DriveState::DRIVE) {
@@ -35,6 +39,9 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     }
 
     steering_ = computeSteering(cross_offset);
+
+    vehicle_->setSteeringPercent(steering_);
+    vehicle_->setThrottlePercent(throttle_);
 
     // 조향/스로틀값 출력
     std::cout << "[제어 출력] 상태: ";

@@ -4,6 +4,8 @@
 
 #include <chrono>
 #include <vector>
+#include <memory>  // shared_ptr 사용을 위해 필요
+#include "../piracer-cpp/PiRacer/PiRacer.hpp"
 
 enum class DriveState {
     DRIVE,
@@ -27,6 +29,8 @@ private:
     std::chrono::steady_clock::time_point wait_start_time_;
     float steering_;
     float throttle_;
+
+    std::shared_ptr<PiRacer> vehicle_;
 };
 
 #endif

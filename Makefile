@@ -8,7 +8,8 @@ SRC = \
     src/usb_cam.cpp \
     src/video_recorder.cpp \
 	src/lane_detector.cpp \
-	src/object_detector.cpp
+	src/object_detector.cpp \
+	src/control.cpp
 
 OUT = auto_drive
 

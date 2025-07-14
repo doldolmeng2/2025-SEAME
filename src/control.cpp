@@ -1,66 +1,70 @@
 // control.cpp
 #include "control.hpp"
-#include <algorithm>
+#include "constants.hpp"
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 
-Controller::Controller(std::shared_ptr<PiRacer> vehicle,
-                       float steering_kp, float throttle_kp,
-                       float max_throttle, int wait_seconds)
-    : vehicle_(vehicle),
-      steering_kp_(steering_kp),
-      throttle_kp_(throttle_kp),
-      max_throttle_(max_throttle),
-      wait_duration_(wait_seconds),
-      drive_state_(DriveState::DRIVE) {}
+using namespace std::chrono;
 
-void Controller::updateAndDrive(bool stop_line_detected, bool crosswalk_detected,
-                                bool start_line_detected, int cross_point_offset) {
+Controller::Controller()
+    : drive_state_(DriveState::DRIVE), steering_(0.0f), throttle_(0.0f) {}
+
+void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset) {
     if (drive_state_ == DriveState::DRIVE) {
-        if (stop_line_detected && crosswalk_detected) {
+        if (stop_line && crosswalk) {
             drive_state_ = DriveState::WAIT_AFTER_CROSSWALK;
-            wait_start_time_ = std::chrono::steady_clock::now();
-            std::cout << "[INFO] 정지선 + 횡단보도 감지 → " << wait_duration_ << "초 정지 시작\n";
-        } else if (start_line_detected) {
+            wait_start_time_ = steady_clock::now();
+            std::cout << "[INFO] 정지선 + 횡단보도 감지됨 → " << WAIT_SECONDS << "초 정지 시작\n";
+        } else if (start_line) {
             drive_state_ = DriveState::STOP_AT_START_LINE;
-            std::cout << "[INFO] 출발선 감지 → 정지\n";
+            std::cout << "[INFO] 출발선 감지됨 → 정지\n";
         }
     } else if (drive_state_ == DriveState::WAIT_AFTER_CROSSWALK) {
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - wait_start_time_).count();
-        if (elapsed >= wait_duration_) {
+        auto elapsed = duration_cast<seconds>(steady_clock::now() - wait_start_time_).count();
+        if (elapsed >= WAIT_SECONDS) {
             drive_state_ = DriveState::DRIVE;
-            std::cout << "[INFO] 5초 경과 → 출발\n";
+            std::cout << "[INFO] " << WAIT_SECONDS << "초 경과 → 주행 재개\n";
         }
     }
 
-    float steering = computeSteering(cross_point_offset);
-    float throttle = computeThrottle(cross_point_offset);
-
-    vehicle_->set_steering_percent(steering);
-    vehicle_->set_throttle_percent(throttle);
-
-    std::cout << "[제어] 조향: " << steering << ", 스로틀: " << throttle << std::endl;
-}
-
-bool Controller::isStopping() const {
-    return drive_state_ == DriveState::WAIT_AFTER_CROSSWALK;
-}
-
-bool Controller::isStartLineStop() const {
-    return drive_state_ == DriveState::STOP_AT_START_LINE;
-}
-
-float Controller::computeSteering(int cross_point_offset) {
-    float steering = -steering_kp_ * static_cast<float>(cross_point_offset);
-    return std::clamp(steering, -1.0f, 1.0f);
-}
-
-float Controller::computeThrottle(int cross_point_offset) {
-    if (isStopping() || isStartLineStop()) {
-        return 0.0f;
+    if (drive_state_ == DriveState::STOP_AT_START_LINE || drive_state_ == DriveState::WAIT_AFTER_CROSSWALK) {
+        throttle_ = 0.0f;
+    } else {
+        throttle_ = computeThrottle(cross_offset);
     }
 
-    float error = static_cast<float>(cross_point_offset);
-    float throttle = max_throttle_ - throttle_kp_ * std::abs(error);
-    return std::clamp(throttle, 0.0f, max_throttle_);
+    steering_ = computeSteering(cross_offset);
+
+    // 조향/스로틀값 출력
+    std::cout << "[제어 출력] 상태: ";
+    switch (drive_state_) {
+        case DriveState::DRIVE:
+            std::cout << "주행";
+            break;
+        case DriveState::WAIT_AFTER_CROSSWALK:
+            std::cout << "횡단보도 대기";
+            break;
+        case DriveState::STOP_AT_START_LINE:
+            std::cout << "출발선 정지";
+            break;
+    }
+
+    std::cout << " | cross_offset: " << cross_offset
+              << " | steering: " << steering_
+              << " | throttle: " << throttle_
+              << "\n";
+}
+
+float Controller::computeSteering(int offset) const {
+    // 예시: 중앙 기준 offset을 -100 ~ +100으로 보고 정규화
+    float k = 0.005f;  // 조향 민감도
+    return std::clamp(k * offset, -1.0f, 1.0f);
+}
+
+float Controller::computeThrottle(int offset) const {
+    // 예시: offset이 작을수록 직진 성향 → 가속
+    float base_throttle = 0.2f;
+    float reduction = std::min(0.1f, std::abs(offset) * 0.001f);  // offset 클수록 감속
+    return std::clamp(base_throttle - reduction, 0.0f, 1.0f);
 }

@@ -16,10 +16,23 @@
 #include "video_recorder.hpp"
 #include "lane_detector.hpp"
 #include "object_detector.hpp"  
+#include "control.hpp"
 #include "constants.hpp"
 
-std::shared_ptr<cv::Mat> shared_frame = nullptr;
 std::mutex frame_mutex;
+
+std::shared_ptr<cv::Mat> shared_frame = nullptr;
+
+std::mutex lane_mutex;
+std::atomic<int> cross_point_offset = 0;
+
+std::mutex object_mutex;
+std::vector<bool> detections_flags(3, false);
+
+std::condition_variable control_cv;
+std::mutex control_mutex;
+bool control_ready = false;
+
 std::condition_variable first_frame_cv;
 bool first_frame_ready = false;
 std::atomic<bool> running(true);
@@ -121,47 +134,99 @@ int main(int argc, char** argv) {
         first_frame_cv.wait(lock, [] { return first_frame_ready; });
     }
 
-    std::thread lane_thread;
-    if (current_mode == Mode::DRIVE || current_mode == Mode::DRIVE_RECORD) {
-        lane_thread = std::thread([&]() {
-            LaneDetector lanedetector;
-            ObjectDetector objectdetector;
-            while (running.load()) {
-                std::shared_ptr<cv::Mat> frame_copy;
-                {
-                    std::lock_guard<std::mutex> lock(frame_mutex);
-                    frame_copy = shared_frame;
-                }
-                if (frame_copy && !frame_copy->empty()) {
-                        cv::Mat vis_out1;
-                        cv::Mat vis_out2;
-                        std::vector<bool> detections_flags;
-                        int cross_point_offset = lanedetector.process(*frame_copy, vis_out1); // 차선 교점과 화면 중앙 사이의 거리(교점이 화면 중앙 기준으로 오른쪽이면 +, 왼쪽이면 -)
-                        objectdetector.process(*frame_copy, vis_out2, detections_flags);
-                        // 디버그용 출력
-                        // std::cout << "[Drive] 조향각: " << angle;
-                        // if (!detections_flags.empty()) {
-                        //     if (detections_flags[0]) std::cout << " | 정지선 감지";
-                        //     if (detections_flags[1]) std::cout << " | 횡단보도 감지";
-                        //     if (detections_flags[2]) std::cout << " | 출발선 감지";
-                        // }
-                        // std::cout << "\n";
-            
-                        if (VIEWER) {
-                            cv::imshow("Processed View1", vis_out1);
-                            cv::imshow("Processed View2", vis_out2);
-                            if (cv::waitKey(1) == 27) {
-                                running = false;
-                            }
-                        }
-                    }
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+
+    std::thread lane_thread([&]() {
+        LaneDetector lanedetector;
+        while (running) {
+            std::shared_ptr<cv::Mat> frame;
+            {
+                std::lock_guard<std::mutex> lock(frame_mutex);
+                frame = shared_frame;
             }
-        });
-    }
+            if (frame && !frame->empty()) {
+                cv::Mat vis_out;
+                int offset = lanedetector.process(*frame, vis_out);
+                {
+                    std::lock_guard<std::mutex> lock(lane_mutex);
+                    cross_point_offset = offset;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(control_mutex);
+                    control_ready = true;
+                    control_cv.notify_one();
+                }
+                if (VIEWER) {
+                    cv::imshow("Lane", vis_out);
+                    if (cv::waitKey(1) == 27) running = false;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+
+    std::thread object_thread([&]() {
+        ObjectDetector detector;
+        while (running) {
+            std::shared_ptr<cv::Mat> frame;
+            {
+                std::lock_guard<std::mutex> lock(frame_mutex);
+                frame = shared_frame;
+            }
+            if (frame && !frame->empty()) {
+                cv::Mat vis_out;
+                std::vector<bool> flags;
+                detector.process(*frame, vis_out, flags);
+                {
+                    std::lock_guard<std::mutex> lock(object_mutex);
+                    detections_flags = flags;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(control_mutex);
+                    control_ready = true;
+                    control_cv.notify_one();
+                }
+                if (VIEWER) {
+                    cv::imshow("Objects", vis_out);
+                    if (cv::waitKey(1) == 27) running = false;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+
+    std::thread control_thread([&]() {
+        Controller controller;
+        while (running) {
+            std::unique_lock<std::mutex> lock(control_mutex);
+            control_cv.wait(lock, [] { return control_ready; });
+            control_ready = false;
+            lock.unlock();
+
+            bool stop = false, cross = false, start = false;
+            int offset = 0;
+
+            {
+                std::lock_guard<std::mutex> lock(lane_mutex);
+                offset = cross_point_offset;
+            }
+            {
+                std::lock_guard<std::mutex> lock(object_mutex);
+                if (detections_flags.size() > 0) stop = detections_flags[0];
+                if (detections_flags.size() > 1) cross = detections_flags[1];
+                if (detections_flags.size() > 2) start = detections_flags[2];
+            }
+
+            controller.update(stop, cross, start, offset);
+        }
+    });
+
 
     camera_thread.join();
-    if (lane_thread.joinable()) lane_thread.join();
+    lane_thread.join();
+    object_thread.join();
+    control_thread.join();
+
     recorder.release();
 
     std::cout << "[INFO] 프로그램 종료\n";

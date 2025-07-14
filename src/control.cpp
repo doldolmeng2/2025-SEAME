@@ -4,15 +4,29 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <pybind11/embed.h>  // pybind11 임베드 모드 사용
 
+namespace py = pybind11;
 using namespace std::chrono;
 
 Controller::Controller()
     : drive_state_(DriveState::DRIVE),
       steering_(-0.25f),
-      throttle_(0.0f),
-      vehicle_(std::make_shared<PiRacer>())  // ✅ 여기에서 생성
-{}
+      throttle_(0.0f)
+{
+    try {
+        py::initialize_interpreter();
+        py::module_ piracer_module = py::module_::import("piracer.vehicles");
+        piracer_ = piracer_module.attr("PiracerPro")();  // PiracerPro 인스턴스 생성
+        std::cout << "[INFO] Python PiracerPro 객체 생성 완료" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] Python 초기화 실패: " << e.what() << std::endl;
+    }
+}
+
+Controller::~Controller() {
+    py::finalize_interpreter();
+}
 
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset) {
     if (drive_state_ == DriveState::DRIVE) {
@@ -40,10 +54,13 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
 
     steering_ = computeSteering(cross_offset);
 
-    vehicle_->setSteeringPercent(steering_);
-    vehicle_->setThrottlePercent(throttle_);
+    try {
+        piracer_.attr("set_steering_percent")(steering_);
+        piracer_.attr("set_throttle_percent")(throttle_);
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] Python 제어 실패: " << e.what() << std::endl;
+    }
 
-    // 조향/스로틀값 출력
     std::cout << "[제어 출력] 상태: ";
     switch (drive_state_) {
         case DriveState::DRIVE:
@@ -59,19 +76,16 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
 
     std::cout << " | cross_offset: " << cross_offset
               << " | steering: " << steering_
-              << " | throttle: " << throttle_
-              << "\n";
+              << " | throttle: " << throttle_ << "\n";
 }
 
 float Controller::computeSteering(int offset) const {
-    // 예시: 중앙 기준 offset을 -100 ~ +100으로 보고 정규화
     float k = 0.001f;  // 조향 민감도
     return std::clamp(-0.25f + k * offset, -0.7f, 0.7f);
 }
 
 float Controller::computeThrottle(int offset) const {
-    // 예시: offset이 작을수록 직진 성향 → 가속
     float base_throttle = 0.4f;
-    float reduction = std::min(0.2f, std::abs(offset) * 0.0005f);  // offset 클수록 감속
+    float reduction = std::min(0.2f, std::abs(offset) * 0.0005f);
     return std::clamp(base_throttle - reduction, 0.0f, 0.8f);
 }

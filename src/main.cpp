@@ -12,7 +12,6 @@
 #include <iomanip>
 #include <sstream>
 
-#include "pigpio.h"
 #include "usb_cam.hpp"
 #include "video_recorder.hpp"
 #include "lane_detector.hpp"
@@ -62,7 +61,6 @@ std::string getTimestampedFilename(const std::string& base_dir) {
 }
 
 int main(int argc, char** argv) {
-    gpioInitialise();
 
     signal(SIGINT, signal_handler);
 
@@ -233,6 +231,5 @@ int main(int argc, char** argv) {
     recorder.release();
 
     std::cout << "[INFO] 프로그램 종료\n";
-    gpioTerminate();
     return 0;
 }

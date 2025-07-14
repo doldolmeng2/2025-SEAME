@@ -4,8 +4,7 @@
 
 #include <chrono>
 #include <vector>
-#include <memory>  // shared_ptr 사용을 위해 필요
-#include "../piracer-cpp/PiRacer/PiRacer.hpp"
+#include <pybind11/embed.h>  // pybind11 임포트 필요
 
 enum class DriveState {
     DRIVE,
@@ -16,6 +15,7 @@ enum class DriveState {
 class Controller {
 public:
     Controller();
+    ~Controller();
 
     void update(bool stop_line, bool crosswalk, bool start_line, int cross_offset);
     float getSteering() const;
@@ -30,7 +30,7 @@ private:
     float steering_;
     float throttle_;
 
-    std::shared_ptr<PiRacer> vehicle_;
+    pybind11::object piracer_;  // ← Python 객체를 위한 멤버 추가
 };
 
 #endif

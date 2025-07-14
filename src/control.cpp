@@ -9,15 +9,20 @@
 namespace py = pybind11;
 using namespace std::chrono;
 
+struct Controller::Impl {
+    py::object piracer_;
+};
+
 Controller::Controller()
     : drive_state_(DriveState::DRIVE),
       steering_(-0.25f),
-      throttle_(0.0f)
+      throttle_(0.0f),
+      impl_(new Impl())  // ✅ impl_ 초기화
 {
     try {
         py::initialize_interpreter();
         py::module_ piracer_module = py::module_::import("piracer.vehicles");
-        piracer_ = piracer_module.attr("PiracerPro")();  // PiracerPro 인스턴스 생성
+        impl_->piracer_ = piracer_module.attr("PiracerPro")();
         std::cout << "[INFO] Python PiracerPro 객체 생성 완료" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Python 초기화 실패: " << e.what() << std::endl;
@@ -25,6 +30,7 @@ Controller::Controller()
 }
 
 Controller::~Controller() {
+    delete impl_;
     py::finalize_interpreter();
 }
 

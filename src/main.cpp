@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "pigpio.h"
 #include "usb_cam.hpp"
 #include "video_recorder.hpp"
 #include "lane_detector.hpp"

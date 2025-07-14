@@ -9,7 +9,7 @@ using namespace std::chrono;
 
 Controller::Controller()
     : drive_state_(DriveState::DRIVE),
-      steering_(0.0f),
+      steering_(-0.25f),
       throttle_(0.0f),
       vehicle_(std::make_shared<PiRacer>())  // ✅ 여기에서 생성
 {}
@@ -65,13 +65,13 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
 
 float Controller::computeSteering(int offset) const {
     // 예시: 중앙 기준 offset을 -100 ~ +100으로 보고 정규화
-    float k = 0.005f;  // 조향 민감도
-    return std::clamp(k * offset, -1.0f, 1.0f);
+    float k = 0.001f;  // 조향 민감도
+    return std::clamp(-0.25f + k * offset, -0.7f, 0.7f);
 }
 
 float Controller::computeThrottle(int offset) const {
     // 예시: offset이 작을수록 직진 성향 → 가속
-    float base_throttle = 0.2f;
-    float reduction = std::min(0.1f, std::abs(offset) * 0.001f);  // offset 클수록 감속
-    return std::clamp(base_throttle - reduction, 0.0f, 1.0f);
+    float base_throttle = 0.4f;
+    float reduction = std::min(0.2f, std::abs(offset) * 0.0005f);  // offset 클수록 감속
+    return std::clamp(base_throttle - reduction, 0.0f, 0.8f);
 }

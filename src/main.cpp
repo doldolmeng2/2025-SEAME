@@ -84,6 +84,10 @@ void barrier_wait(int fid) {
         gen++;
         count = 0;
         barrier_cv.notify_all();
+
+        // 🔽 map에서 fid 관련 정보 정리 (메모리 누적 방지)
+        gen_map.erase(fid);
+        cnt_map.erase(fid);
     } else {
         // 타임아웃 100ms 대기 후 경고, 다시 대기
         if (!barrier_cv.wait_for(lock,
@@ -94,7 +98,6 @@ void barrier_wait(int fid) {
                             [&]{ return gen_map[fid] != my_gen; });
         }
     }
-    // (참고: 맵 정리는 필요시 추가)
 }
 
 int main(int argc, char** argv) {
@@ -148,6 +151,7 @@ int main(int argc, char** argv) {
             if (frame.empty()) continue;
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
+                frame_id.fetch_add(1);
                 shared_frame = std::make_shared<cv::Mat>(frame);
 
                 if (!first_frame_ready) {
@@ -161,7 +165,6 @@ int main(int argc, char** argv) {
             }
 
             if (VIEWER && cv::waitKey(1)==27) running=false;
-            frame_id.fetch_add(1);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -175,11 +178,11 @@ int main(int argc, char** argv) {
         LaneDetector lanedetector;
         while (running) {
             std::shared_ptr<cv::Mat> frame;
-            int fid = frame_id.load();
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
                 frame = shared_frame;
             }
+            int fid = frame_id.load();
             if (frame && !frame->empty()) {
                 cv::Mat vis_out;
                 int offset = lanedetector.process(*frame, vis_out);
@@ -201,11 +204,11 @@ int main(int argc, char** argv) {
         ObjectDetector detector;
         while (running) {
             std::shared_ptr<cv::Mat> frame;
-            int fid = frame_id.load();
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
                 frame = shared_frame;
             }
+            int fid = frame_id.load();
             if (frame && !frame->empty()) {
                 cv::Mat vis_out;
                 std::vector<bool> flags;
@@ -246,7 +249,6 @@ int main(int argc, char** argv) {
             controller.update(stop, cross, start, offset);
         }
     });
-
 
     camera_thread.join();
     lane_thread.join();

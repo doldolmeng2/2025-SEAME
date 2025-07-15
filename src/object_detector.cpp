@@ -5,8 +5,6 @@
 
 ObjectDetector::ObjectDetector() {}
 
-
-
 int ObjectDetector::process(const cv::Mat& frame, cv::Mat& vis_out, std::vector<bool>& detection_flags) {
     if (frame.empty()) {
         std::cerr << "[ObjectDetector] 입력 프레임이 비어있습니다." << std::endl;

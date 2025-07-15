@@ -24,7 +24,7 @@ std::mutex frame_mutex;
 std::shared_ptr<cv::Mat> shared_frame = nullptr;
 
 std::mutex lane_mutex;
-std::atomic<int> cross_point_offset = 0;
+std::atomic<int> mean_center_offset = 0;
 
 std::mutex object_mutex;
 std::vector<bool> detections_flags(3, false);
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
                 int offset = lanedetector.process(*frame, vis_out);
                 {
                     std::lock_guard<std::mutex> lock(lane_mutex);
-                    cross_point_offset = offset;
+                    mean_center_offset = offset;
                 }
                 {
                     std::lock_guard<std::mutex> lock(control_mutex);
@@ -217,7 +217,7 @@ int main(int argc, char** argv) {
 
             {
                 std::lock_guard<std::mutex> lock(lane_mutex);
-                offset = cross_point_offset;
+                offset = mean_center_offset;
             }
             {
                 std::lock_guard<std::mutex> lock(object_mutex);

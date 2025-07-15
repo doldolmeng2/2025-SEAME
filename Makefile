@@ -1,6 +1,6 @@
 # Makefile for auto_drive_project
 
-CXX = g++
+CXX = ccache g++
 PYTHON_INCLUDE = -I/usr/include/python3.10 -I/home/orda/.local/lib/python3.10/site-packages/pybind11/include
 PYTHON_LIBS = -lpython3.10
 CXXFLAGS = -std=c++17 -Iinclude $(PYTHON_INCLUDE) `pkg-config --cflags opencv4`

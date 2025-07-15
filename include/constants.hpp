@@ -20,7 +20,7 @@ constexpr int YELLOW_H_MAX = 40;
 constexpr bool VIEWER = true;
 
 // 컨트롤 상수
-constexpr float STEERING_KP = 0.0035f;
+constexpr float STEERING_KP = 0.0035ssssssssssssssssssssssssssssssf;
 constexpr float THROTTLE_KP = 0.001f;
 constexpr float MAX_THROTTLE = 0.35f;
 constexpr int WAIT_SECONDS = 5;

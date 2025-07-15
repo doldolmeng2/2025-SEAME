@@ -11,9 +11,9 @@ public:
 
 private:
     cv::Mat createTrapezoidMask(int height, int width);
-    cv::Vec2f slidingWindowDual(const cv::Mat& binary, const std::string& side, bool& valid);
-    cv::Point computeIntersection(const cv::Vec2f& poly1, const cv::Vec2f& poly2, bool& valid);
+    std::vector<std::vector<int>> findWhiteBlobs(const uchar* row_ptr, int width, int min_blob_size = 10);
 
-    cv::Vec2f prev_poly_left_, prev_poly_right_;
-    bool has_prev_left_ = false, has_prev_right_ = false;
+    // 🔽 새롭게 추가할 멤버 변수
+    int prev_lane_gap_top_ = 120;    // 초기값: 대략적인 차선 간 거리
+    int prev_lane_gap_bottom_ = 120;
 };

@@ -194,6 +194,7 @@ int main(int argc, char** argv) {
                     std::lock_guard<std::mutex> lock(control_mutex);
                     control_ready = true;
                     control_cv.notify_one();
+                    // std::cout << "control ready true \n";
                 }
                 if (VIEWER) {
                     cv::imshow("Objects", vis_out);
@@ -207,6 +208,7 @@ int main(int argc, char** argv) {
     std::thread control_thread([&]() {
         Controller controller;
         while (running) {
+ 
             std::unique_lock<std::mutex> lock(control_mutex);
             control_cv.wait(lock, [] { return control_ready; });
             control_ready = false;
@@ -225,8 +227,8 @@ int main(int argc, char** argv) {
                 if (detections_flags.size() > 1) cross = detections_flags[1];
                 if (detections_flags.size() > 2) start = detections_flags[2];
             }
-
             controller.update(stop, cross, start, offset);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
 

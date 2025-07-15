@@ -5,7 +5,7 @@
 
 LaneDetector::LaneDetector() {}
 
-std::vector<std::vector<int>> findWhiteBlobs(const uchar* row_ptr, int width, int min_blob_size = 10) {
+std::vector<std::vector<int>> LaneDetector::findWhiteBlobs(const uchar* row_ptr, int width, int min_blob_size) {
     std::vector<std::vector<int>> blobs;
     std::vector<int> current_blob;
 
@@ -66,30 +66,42 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     };
 
     std::vector<cv::Point> lane_points;
-
+    
+    int i = 0;
     for (int y : target_rows) {
         const uchar* row_ptr = white_mask.ptr<uchar>(y);
         auto blobs = findWhiteBlobs(row_ptr, width);
 
         if (blobs.size() >= 2) {
-            // 가장 큰 두 뭉탱이에서 각각 평균 x 계산
-            for (int i = 0; i < 2; ++i) {
-                int avg_x = std::accumulate(blobs[i].begin(), blobs[i].end(), 0) / blobs[i].size();
-                lane_points.emplace_back(avg_x, y);
-                cv::circle(vis_out, cv::Point(avg_x, y), 3, cv::Scalar(0, 255, 255), -1);
-            }
+            int x1 = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
+            int x2 = std::accumulate(blobs[1].begin(), blobs[1].end(), 0) / blobs[1].size();
+            if (x1 > x2) std::swap(x1, x2);
+
+            // 🔸 두 점 사이 거리 저장
+            if (i == 0) prev_lane_gap_top_ = x2 - x1;
+            else        prev_lane_gap_bottom_ = x2 - x1;
+
+            lane_points.emplace_back(x1, y);
+            lane_points.emplace_back(x2, y);
+
+            cv::circle(vis_out, cv::Point(x1, y), 3, cv::Scalar(0, 255, 255), -1);
+            cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 255), -1);
         } else if (blobs.size() == 1) {
             int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
-            int x_mirror = 2 * center_x - x;
+            int lane_gap = (i == 0) ? prev_lane_gap_top_ : prev_lane_gap_bottom_;
+
+            int x_other = (x < center_x) ? x + lane_gap : x - lane_gap;
+
             lane_points.emplace_back(x, y);
-            lane_points.emplace_back(x_mirror, y);
+            lane_points.emplace_back(x_other, y);
+
             cv::circle(vis_out, cv::Point(x, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x_mirror, y), 3, cv::Scalar(0, 128, 255), -1);
+            cv::circle(vis_out, cv::Point(x_other, y), 3, cv::Scalar(0, 128, 255), -1);
         } else {
-            // 아무것도 없으면 중앙 기준 30픽셀 좌우로 점 생성
-            lane_points.emplace_back(center_x - 30, y);
-            lane_points.emplace_back(center_x + 30, y);
+            lane_points.emplace_back(center_x - 60, y);
+            lane_points.emplace_back(center_x + 60, y);
         }
+        i++;
     }
 
     // 중앙선 대비 오프셋 평균 계산

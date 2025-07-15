@@ -28,7 +28,7 @@ private:
     std::chrono::steady_clock::time_point wait_start_time_;
     float steering_;
     float throttle_;
-
+    bool manual_mode_;
     // pybind11 관련 멤버는 cpp 파일에서만 정의
     struct Impl;
     Impl* impl_;

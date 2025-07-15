@@ -3,7 +3,7 @@
 CXX = ccache g++
 PYTHON_INCLUDE = -I/usr/include/python3.10 -I/home/orda/.local/lib/python3.10/site-packages/pybind11/include
 PYTHON_LIBS = -lpython3.10
-CXXFLAGS = -std=c++17 -Iinclude $(PYTHON_INCLUDE) `pkg-config --cflags opencv4`
+CXXFLAGS = -std=c++17 -Iinclude -I/usr/include $(PYTHON_INCLUDE) `pkg-config --cflags opencv4`
 LDFLAGS = `pkg-config --libs opencv4` -lrt -pthread $(PYTHON_LIBS)
 
 SRC = \
@@ -12,7 +12,8 @@ SRC = \
     src/video_recorder.cpp \
     src/lane_detector.cpp \
     src/object_detector.cpp \
-    src/control.cpp
+    src/control.cpp \
+    src/constants.cpp
 
 OUT = auto_drive
 

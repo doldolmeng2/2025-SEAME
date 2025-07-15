@@ -62,6 +62,13 @@ std::string getTimestampedFilename(const std::string& base_dir) {
 
 int main(int argc, char** argv) {
 
+    try{
+        load_constants(); // constants.json에 있는 정보를 constants.hpp로 가져온다.
+    } catch (const std::exception& e){
+        std::cerr << "[ERROR] 상수 로드 실패: " << e.what() << std::endl;
+        return 1;
+    }
+
     signal(SIGINT, signal_handler);
 
     if (argc < 2) {

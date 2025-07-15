@@ -151,8 +151,8 @@ int main(int argc, char** argv) {
             if (frame.empty()) continue;
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
-                frame_id.fetch_add(1);
                 shared_frame = std::make_shared<cv::Mat>(frame);
+                frame_id.fetch_add(1);
 
                 if (!first_frame_ready) {
                     first_frame_ready = true;
@@ -178,23 +178,32 @@ int main(int argc, char** argv) {
         LaneDetector lanedetector;
         while (running) {
             std::shared_ptr<cv::Mat> frame;
+            int fid = -1;
+
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
                 frame = shared_frame;
+                fid = frame_id.load();
             }
-            int fid = frame_id.load();
-            if (frame && !frame->empty()) {
-                cv::Mat vis_out;
-                int offset = lanedetector.process(*frame, vis_out);
-                {
-                    std::lock_guard<std::mutex> lock(lane_mutex);
-                    cross_point_offset = offset;
-                }
-                if (VIEWER) {
-                    cv::imshow("Lane", vis_out);
-                    if (cv::waitKey(1) == 27) running = false;
-                }
+
+            if (!frame || frame->empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                continue;
             }
+
+            cv::Mat vis_out;
+            int offset = lanedetector.process(*frame, vis_out);
+
+            {
+                std::lock_guard<std::mutex> lock(lane_mutex);
+                cross_point_offset = offset;
+            }
+
+            if (VIEWER) {
+                cv::imshow("Lane", vis_out);
+                if (cv::waitKey(1) == 27) running = false;
+            }
+
             barrier_wait(fid);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }

@@ -20,34 +20,22 @@
 #include "constants.hpp"
 
 std::mutex frame_mutex;
-std::mutex lane_mutex;
-std::mutex object_mutex;
-std::mutex control_mutex;
-std::mutex barrier_mutex;
 
 std::shared_ptr<cv::Mat> shared_frame = nullptr;
 
+std::mutex lane_mutex;
 std::atomic<int> cross_point_offset = 0;
-std::atomic<bool> running(true);
-std::atomic<bool> lane_updated(false);
-std::atomic<bool> object_updated(false);
-std::atomic<int> frame_id{0};
+
+std::mutex object_mutex;
+std::vector<bool> detections_flags(3, false);
 
 std::condition_variable control_cv;
-std::condition_variable first_frame_cv;
-std::condition_variable barrier_cv;
-
+std::mutex control_mutex;
 bool control_ready = false;
+
+std::condition_variable first_frame_cv;
 bool first_frame_ready = false;
-int barrier_count = 0;
-int barrier_gen = 0;
-const int BARRIER_N = 3; // lane, object, control
-
-// 프레임별 barrier 상태를 보관 (간단화 위해 전역 맵)
-std::unordered_map<int,int> gen_map;
-std::unordered_map<int,int> cnt_map;
-
-std::vector<bool> detections_flags(3, false);
+std::atomic<bool> running(true);
 
 enum class Mode { DRIVE, RECORD, DRIVE_RECORD };
 Mode current_mode = Mode::DRIVE;
@@ -72,35 +60,8 @@ std::string getTimestampedFilename(const std::string& base_dir) {
     return oss.str();
 }
 
-// 프레임 ID 기반 barrier
-void barrier_wait(int fid) {
-    std::unique_lock<std::mutex> lock(barrier_mutex);
-    int& gen   = gen_map[fid];
-    int& count = cnt_map[fid];
-    int my_gen = gen;
-
-    if (++count == BARRIER_N) {
-        // 마지막 스레드 도착
-        gen++;
-        count = 0;
-        barrier_cv.notify_all();
-
-        // 🔽 map에서 fid 관련 정보 정리 (메모리 누적 방지)
-        gen_map.erase(fid);
-        cnt_map.erase(fid);
-    } else {
-        // 타임아웃 100ms 대기 후 경고, 다시 대기
-        if (!barrier_cv.wait_for(lock,
-                                 std::chrono::milliseconds(100),
-                                 [&]{ return gen_map[fid] != my_gen; })) {
-            std::cerr << "[WARN] barrier timed out for fid=" << fid << "\n";
-            barrier_cv.wait(lock,
-                            [&]{ return gen_map[fid] != my_gen; });
-        }
-    }
-}
-
 int main(int argc, char** argv) {
+
     try{
         load_constants("constants.json"); // constants.json에 있는 정보를 constants.hpp로 가져온다.
         std::cout << "Steering Gain: " << STEERING_KP << "\n";
@@ -149,10 +110,12 @@ int main(int argc, char** argv) {
         while (running.load()) {
             cv::Mat frame = cam.getFrame();
             if (frame.empty()) continue;
+
+            auto ptr = std::make_shared<cv::Mat>(frame);
+
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
-                shared_frame = std::make_shared<cv::Mat>(frame);
-                frame_id.fetch_add(1);
+                shared_frame = ptr;
 
                 if (!first_frame_ready) {
                     first_frame_ready = true;
@@ -164,7 +127,13 @@ int main(int argc, char** argv) {
                 recorder.write(frame);
             }
 
-            if (VIEWER && cv::waitKey(1)==27) running=false;
+            if (VIEWER) {
+                // cv::imshow("Live", frame);
+                if (cv::waitKey(1) == 27) {
+                    running = false;
+                }
+            }
+
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -174,37 +143,33 @@ int main(int argc, char** argv) {
         first_frame_cv.wait(lock, [] { return first_frame_ready; });
     }
 
+
+
     std::thread lane_thread([&]() {
         LaneDetector lanedetector;
         while (running) {
             std::shared_ptr<cv::Mat> frame;
-            int fid = -1;
-
             {
                 std::lock_guard<std::mutex> lock(frame_mutex);
                 frame = shared_frame;
-                fid = frame_id.load();
             }
-
-            if (!frame || frame->empty()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                continue;
+            if (frame && !frame->empty()) {
+                cv::Mat vis_out;
+                int offset = lanedetector.process(*frame, vis_out);
+                {
+                    std::lock_guard<std::mutex> lock(lane_mutex);
+                    cross_point_offset = offset;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(control_mutex);
+                    control_ready = true;
+                    control_cv.notify_one();
+                }
+                if (VIEWER) {
+                    cv::imshow("Lane", vis_out);
+                    if (cv::waitKey(1) == 27) running = false;
+                }
             }
-
-            cv::Mat vis_out;
-            int offset = lanedetector.process(*frame, vis_out);
-
-            {
-                std::lock_guard<std::mutex> lock(lane_mutex);
-                cross_point_offset = offset;
-            }
-
-            if (VIEWER) {
-                cv::imshow("Lane", vis_out);
-                if (cv::waitKey(1) == 27) running = false;
-            }
-
-            barrier_wait(fid);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -217,7 +182,6 @@ int main(int argc, char** argv) {
                 std::lock_guard<std::mutex> lock(frame_mutex);
                 frame = shared_frame;
             }
-            int fid = frame_id.load();
             if (frame && !frame->empty()) {
                 cv::Mat vis_out;
                 std::vector<bool> flags;
@@ -226,12 +190,16 @@ int main(int argc, char** argv) {
                     std::lock_guard<std::mutex> lock(object_mutex);
                     detections_flags = flags;
                 }
+                {
+                    std::lock_guard<std::mutex> lock(control_mutex);
+                    control_ready = true;
+                    control_cv.notify_one();
+                }
                 if (VIEWER) {
                     cv::imshow("Objects", vis_out);
                     if (cv::waitKey(1) == 27) running = false;
                 }
             }
-            barrier_wait(fid);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -239,9 +207,11 @@ int main(int argc, char** argv) {
     std::thread control_thread([&]() {
         Controller controller;
         while (running) {
-            int fid = frame_id.load();
-            barrier_wait(fid);  // lane, object가 둘 다 끝날 때까지 대기
-            
+            std::unique_lock<std::mutex> lock(control_mutex);
+            control_cv.wait(lock, [] { return control_ready; });
+            control_ready = false;
+            lock.unlock();
+
             bool stop = false, cross = false, start = false;
             int offset = 0;
 
@@ -255,9 +225,11 @@ int main(int argc, char** argv) {
                 if (detections_flags.size() > 1) cross = detections_flags[1];
                 if (detections_flags.size() > 2) start = detections_flags[2];
             }
+
             controller.update(stop, cross, start, offset);
         }
     });
+
 
     camera_thread.join();
     lane_thread.join();

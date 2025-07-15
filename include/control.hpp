@@ -2,8 +2,10 @@
 #ifndef CONTROL_HPP
 #define CONTROL_HPP
 
+#include <thread>
+#include <atomic>
 #include <chrono>
-#include <vector>
+#include <pybind11/embed.h>
 
 enum class DriveState {
     DRIVE,
@@ -17,21 +19,28 @@ public:
     ~Controller();
 
     void update(bool stop_line, bool crosswalk, bool start_line, int cross_offset);
-    float getSteering() const;
-    float getThrottle() const;
 
 private:
-    float computeSteering(int offset) const;
-    float computeThrottle(int offset) const;
-
+    // ── 기존 멤버 ──
     DriveState drive_state_;
     std::chrono::steady_clock::time_point wait_start_time_;
     float steering_;
     float throttle_;
-    bool manual_mode_;
-    // pybind11 관련 멤버는 cpp 파일에서만 정의
+
+    float computeSteering(int offset) const;
+    float computeThrottle(int offset) const;
+
     struct Impl;
     Impl* impl_;
+
+    // ── 추가할 멤버 ──
+    std::atomic<bool>   manual_mode_{false};
+    std::atomic<float>  manual_throttle_{0.0f};
+    std::atomic<float>  manual_steering_{0.0f};
+
+    std::atomic<bool>   gamepad_running_{false};
+    std::thread         gamepad_thread_;
+    void startGamepadThread();
 };
 
-#endif
+#endif // CONTROL_HPP

@@ -17,7 +17,14 @@ bool VIEWER;
 float STEERING_KP;
 float THROTTLE_KP;
 float MAX_THROTTLE;
+float BASE_THROTTLE;
 int WAIT_SECONDS;
+int RED_H_MIN1;
+int RED_H_MIN2;
+int RED_H_MAX1;
+int RED_H_MAX2;
+int RED_S_MIN;
+int RED_V_MIN;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -41,5 +48,12 @@ void load_constants(const std::string& path) {
     STEERING_KP = j["STEERING_KP"];
     THROTTLE_KP = j["THROTTLE_KP"];
     MAX_THROTTLE = j["MAX_THROTTLE"];
+    BASE_THROTTLE = j["BASE_THROTTLE"];
     WAIT_SECONDS = j["WAIT_SECONDS"];
+    RED_H_MIN1= j["RED_H_MIN1"];
+    RED_H_MIN2= j["RED_H_MIN2"];
+    RED_H_MAX1= j["RED_H_MAX1"];
+    RED_H_MAX2= j["RED_H_MAX2"];
+    RED_S_MIN= j["RED_S_MIN"];
+    RED_V_MIN= j["RED_V_MIN"];
 }

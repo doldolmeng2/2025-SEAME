@@ -52,10 +52,18 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     cv::Mat white_mask = (s < WHITE_S_MAX) & (v >= WHITE_V_MIN) & valid_mask;
     cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
 
+    cv::Mat non_wy = valid_mask & ~white_mask & ~yellow_mask;
+    cv::Mat red_mask1 = (h >= RED_H_MIN1) & (h <= RED_H_MAX1)
+                    & (s >= RED_S_MIN) & (v >= RED_V_MIN);
+    cv::Mat red_mask2 = (h >= RED_H_MIN2) & (h <= RED_H_MAX2)
+                    & (s >= RED_S_MIN) & (v >= RED_V_MIN);
+    cv::Mat red_mask  = non_wy & (red_mask1 | red_mask2);
+
     // 흰색=255, 노란색=127
     cv::Mat grayscale = cv::Mat::zeros(v.size(), CV_8UC1);
     grayscale.setTo(255, white_mask);
     grayscale.setTo(127, yellow_mask);
+    grayscale.setTo( 63, red_mask);
 
     vis_out = frame.clone();
     

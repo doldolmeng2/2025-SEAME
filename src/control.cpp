@@ -124,7 +124,7 @@ float Controller::computeSteering(int offset) const {
 }
 
 float Controller::computeThrottle(int offset) const {
-    float base_throttle = 0.4f;
+    float base_throttle = 0.25f;
     float reduction = std::min(0.2f, std::abs(offset) * 0.0005f);
     return std::clamp(base_throttle - reduction, 0.0f, 0.8f);
 }

@@ -20,7 +20,7 @@ Controller::Controller()
       steering_(-0.25f),
       throttle_(0.0f),
       impl_(new Impl()),
-      manual_mode_(false) // 기본은 자동 모드
+      manual_mode_(true) // 기본은 자동 모드
 {
     try {
         py::initialize_interpreter();
@@ -52,6 +52,7 @@ Controller::~Controller() {
 }
 
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset) {
+    std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
     try {
         py::object data = impl_->gamepad_.attr("read_data")();
         auto a_pressed = py::bool_(data.attr("button_a"));
@@ -91,6 +92,8 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
             }
 
             steering_ = computeSteering(cross_offset);
+            std::cout << "[자동모드] cross_offset = " << cross_offset << "\n";
+            std::cout << "steering val = " << steering_;
         }
 
         impl_->piracer_.attr("set_steering_percent")(steering_);
@@ -100,7 +103,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
         std::cerr << "[ERROR] Python 제어 실패: " << e.what() << std::endl;
     }
 
-    std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
+   //  std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
     switch (drive_state_) {
         case DriveState::DRIVE:
             std::cout << "주행";
@@ -119,7 +122,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
 }
 
 float Controller::computeSteering(int offset) const {
-    float k = 0.001f;  // 조향 민감도
+    float k = 0.02f;  // 조향 민감도
     return std::clamp(-0.25f + k * offset, -0.7f, 0.7f);
 }
 

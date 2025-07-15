@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
             }
 
             if (VIEWER) {
-                cv::imshow("Live", frame);
+                // cv::imshow("Live", frame);
                 if (cv::waitKey(1) == 27) {
                     running = false;
                 }

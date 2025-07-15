@@ -36,7 +36,7 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     grayscale.setTo(127, yellow_mask);
 
     if (VIEWER) {
-        cv::imshow("Grayscale Lane", grayscale);
+        //cv::imshow("Grayscale Lane", grayscale);
         cv::waitKey(1);
     }
 

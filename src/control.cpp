@@ -26,7 +26,7 @@ Controller::Controller()
       steering_(-0.25f),
       throttle_(0.0f),
       impl_(new Impl()),
-      manual_mode_(false),
+      manual_mode_(true),
       manual_throttle_(0.0f),
       manual_steering_(0.0f),
       gamepad_running_(false)

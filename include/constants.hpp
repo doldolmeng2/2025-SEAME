@@ -30,6 +30,7 @@ extern bool ROI_REMOVE_LEFT;
 extern int ROI_REMOVE_LEFT_X_THRESHOLD;
 extern bool WHITE_LINE_DRIVE;
 extern int YELLOW_PIXEL_THRESHOLD;
+extern int DEFAULT_LANE_GAP;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

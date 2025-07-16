@@ -32,6 +32,7 @@ bool ROI_REMOVE_LEFT;
 int ROI_REMOVE_LEFT_X_THRESHOLD;
 bool WHITE_LINE_DRIVE;
 int YELLOW_PIXEL_THRESHOLD;
+int DEFAULT_LANE_GAP;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -70,4 +71,5 @@ void load_constants(const std::string& path) {
     ROI_REMOVE_LEFT_X_THRESHOLD= j["ROI_REMOVE_LEFT_X_THRESHOLD"];
     WHITE_LINE_DRIVE = j["WHITE_LINE_DRIVE"];
     YELLOW_PIXEL_THRESHOLD = j["YELLOW_PIXEL_THRESHOLD"];
+    DEFAULT_LANE_GAP = j["DEFAULT_LANE_GAP"];
 }

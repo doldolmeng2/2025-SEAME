@@ -30,6 +30,8 @@ int LONG_HALF;
 int SHORT_HALF;
 bool ROI_REMOVE_LEFT;
 int ROI_REMOVE_LEFT_X_THRESHOLD;
+bool WHITE_LINE_DRIVE;
+int YELLOW_PIXEL_THRESHOLD;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -66,4 +68,6 @@ void load_constants(const std::string& path) {
     SHORT_HALF= j["SHORT_HALF"];
     ROI_REMOVE_LEFT= j["ROI_REMOVE_LEFT"];
     ROI_REMOVE_LEFT_X_THRESHOLD= j["ROI_REMOVE_LEFT_X_THRESHOLD"];
+    WHITE_LINE_DRIVE = j["WHITE_LINE_DRIVE"];
+    YELLOW_PIXEL_THRESHOLD = j["YELLOW_PIXEL_THRESHOLD"];
 }

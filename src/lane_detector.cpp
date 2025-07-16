@@ -5,7 +5,7 @@
 
 LaneDetector::LaneDetector() {}
 
-std::vector<std::vector<int>> LaneDetector::findWhiteBlobs(const uchar* row_ptr, int width, int min_blob_size) {
+std::vector<std::vector<int>> LaneDetector::findBlobs(const uchar* row_ptr, int width, int min_blob_size) {
     std::vector<std::vector<int>> blobs;
     std::vector<int> current_blob;
 
@@ -67,7 +67,6 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
 
     vis_out = frame.clone();
     
-     // 흰색 마스크 기반 조향각 계산
     std::vector<int> target_rows = {
         static_cast<int>(height * 0.25),
         static_cast<int>(height * 0.75)
@@ -77,8 +76,13 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     
     int i = 0;
     for (int y : target_rows) {
-        const uchar* row_ptr = white_mask.ptr<uchar>(y);
-        auto blobs = findWhiteBlobs(row_ptr, width);
+        const uchar* row_ptr = nullptr;  // 블록 외부에서 먼저 선언
+        if (WHITE_LINE_DRIVE) {
+            row_ptr = white_mask.ptr<uchar>(y);
+        } else {
+            row_ptr = yellow_mask.ptr<uchar>(y);
+        }
+        auto blobs = findBlobs(row_ptr, width);
 
         if (blobs.size() >= 2) {
             int x1 = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
@@ -121,8 +125,14 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
 
     cv::putText(vis_out, "avg_offset: " + std::to_string(avg_offset),
                 cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 0, 255), 2);
+    
+    yellow_pixel_count_ = cv::countNonZero(yellow_mask);  // 기존 코드에서 변수명만 변경
 
     return static_cast<int>(avg_offset);
+}
+
+int LaneDetector::getYellowPixelCount() const {
+    return yellow_pixel_count_;
 }
 
 cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {

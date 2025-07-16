@@ -28,6 +28,8 @@ extern int LONG_HALF;
 extern int SHORT_HALF;
 extern bool ROI_REMOVE_LEFT;
 extern int ROI_REMOVE_LEFT_X_THRESHOLD;
+extern bool WHITE_LINE_DRIVE;
+extern int YELLOW_PIXEL_THRESHOLD;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

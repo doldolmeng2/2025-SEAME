@@ -11,6 +11,10 @@
 namespace py = pybind11;
 using namespace std::chrono;
 
+bool crosswalk_flag = false;
+bool crosswalk_ignore_stopline = false;
+steady_clock::time_point crosswalk_resume_time;
+
 // 내부 Impl 정의 (py::object 감싸기)
 struct __attribute__((visibility("hidden"))) Controller::Impl {
     py::object piracer_;
@@ -104,7 +108,7 @@ void Controller::startGamepadThread() {
 }
 
 
-void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset) {
+void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count) {
     py::gil_scoped_acquire acquire;
 
     std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
@@ -117,10 +121,11 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
         } else {
             // 자동 모드: 이미지 처리 기반 제어
             if (drive_state_ == DriveState::DRIVE) {
-                if (stop_line && crosswalk) {
+                if (crosswalk && !crosswalk_flag) {
+                    crosswalk_flag = true;
                     drive_state_ = DriveState::WAIT_AFTER_CROSSWALK;
                     wait_start_time_ = steady_clock::now();
-                    std::cout << "[INFO] 정지선+횡단보도 감지 → " << WAIT_SECONDS << "초 정지\n";
+                    std::cout << "[INFO] 횡단보도 감지됨 → 대기 시작\n";
                 } else if (start_line) {
                     drive_state_ = DriveState::STOP_AT_START_LINE;
                     std::cout << "[INFO] 출발선 감지 → 정지\n";
@@ -128,8 +133,39 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
             } else if (drive_state_ == DriveState::WAIT_AFTER_CROSSWALK) {
                 auto elapsed = duration_cast<seconds>(steady_clock::now() - wait_start_time_).count();
                 if (elapsed >= WAIT_SECONDS) {
+                    crosswalk_ignore_stopline = true; // 정지선 무시 기간 시작
+                    crosswalk_resume_time = steady_clock::now();
                     drive_state_ = DriveState::DRIVE;
-                    std::cout << "[INFO] " << WAIT_SECONDS << "초 경과 → 주행 재개\n";
+                    std::cout << "[INFO] 횡단보도 정지 후 주행 재개\n";
+                }
+            } else if (drive_state_ == DriveState::STOP_AT_START_LINE) {
+                // 아무 것도 안함 (정지 유지)
+            } else if (drive_state_ == DriveState::DRIVE && crosswalk_flag) {
+                if (crosswalk_ignore_stopline) {
+                    // 무시 기간이 지난 경우 → 정지선 감지 다시 허용
+                    auto since_resume = duration_cast<seconds>(steady_clock::now() - crosswalk_resume_time).count();
+                    if (since_resume > 2) {
+                        crosswalk_ignore_stopline = false;
+                        std::cout << "[INFO] 정지선 감지 다시 활성화됨\n";
+                    }
+                    // 정지선은 무시
+                } else {
+                    // 정지선 감지가 다시 허용된 상태에서 정지선 감지되면 → 전환
+                    if (stop_line) {
+                        drive_state_ = DriveState::YELLOW_LINE_DRIVE;
+                        std::cout << "[INFO] 정지선 감지됨 → 노란 차선 주행으로 전환\n";
+                    }
+                }
+            } else if (drive_state_ == DriveState::YELLOW_LINE_DRIVE) {
+                ROI_REMOVE_LEFT = true;
+                WHITE_LINE_DRIVE = false;
+
+                // 노란색 픽셀 수가 너무 적으면 일반 주행으로 복귀
+                if (yellow_pixel_count < YELLOW_PIXEL_THRESHOLD) {
+                    drive_state_ = DriveState::DRIVE;
+                    ROI_REMOVE_LEFT = false;
+                    WHITE_LINE_DRIVE = true;
+                    std::cout << "[INFO] 노란 차선 사라짐 → 일반 흰색 차선 주행으로 전환\n";
                 }
             }
 

@@ -10,7 +10,8 @@
 enum class DriveState {
     DRIVE,
     WAIT_AFTER_CROSSWALK,
-    STOP_AT_START_LINE
+    STOP_AT_START_LINE,
+    YELLOW_LINE_DRIVE
 };
 
 class Controller {
@@ -18,7 +19,7 @@ public:
     Controller();
     ~Controller();
 
-    void update(bool stop_line, bool crosswalk, bool start_line, int cross_offset);
+    void update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count);
 
 private:
     // ── 기존 멤버 ──

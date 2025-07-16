@@ -19,5 +19,10 @@
   "RED_H_MIN2": 160,
   "RED_H_MAX2": 180,
   "RED_S_MIN": 100,
-  "RED_V_MIN": 90
+  "RED_V_MIN": 90,
+  "Y_TOP": 0.4,
+  "LONG_HALF": 1,
+  "SHORT_HALF": 0.3,
+  "ROI_REMOVE_LEFT": false,
+  "ROI_REMOVE_LEFT_X_THRESHOLD": 80
 }

@@ -25,6 +25,11 @@ int RED_H_MAX1;
 int RED_H_MAX2;
 int RED_S_MIN;
 int RED_V_MIN;
+int Y_TOP;
+int LONG_HALF;
+int SHORT_HALF;
+bool ROI_REMOVE_LEFT;
+int ROI_REMOVE_LEFT_X_THRESHOLD;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -56,4 +61,9 @@ void load_constants(const std::string& path) {
     RED_H_MAX2= j["RED_H_MAX2"];
     RED_S_MIN= j["RED_S_MIN"];
     RED_V_MIN= j["RED_V_MIN"];
+    Y_TOP= j["Y_TOP"];
+    LONG_HALF= j["LONG_HALF"];
+    SHORT_HALF= j["SHORT_HALF"];
+    ROI_REMOVE_LEFT= j["ROI_REMOVE_LEFT"];
+    ROI_REMOVE_LEFT_X_THRESHOLD= j["ROI_REMOVE_LEFT_X_THRESHOLD"];
 }

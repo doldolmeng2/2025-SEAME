@@ -128,10 +128,10 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
 cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {
     cv::Mat mask = cv::Mat::zeros(height, width, CV_8UC1);
 
-    int y_top = static_cast<int>(height * 0.4);
+    int y_top = static_cast<int>(height * Y_TOP);
     int x_center = width / 2;
-    int long_half = width;
-    int short_half = static_cast<int>(width * 0.3);
+    int long_half = width * LONG_HALF;
+    int short_half = static_cast<int>(width * SHORT_HALF);
 
     std::vector<cv::Point> pts = {
         {x_center - long_half, height},
@@ -141,5 +141,13 @@ cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {
     };
 
     cv::fillConvexPoly(mask, pts, 255);
+
+    if (ROI_REMOVE_LEFT){
+        cv::rectangle(mask,
+                  cv::Point(0, 0),
+                  cv::Point(ROI_REMOVE_LEFT_X_THRESHOLD, height),
+                  0,  // 색상: 검정
+                  cv::FILLED);
+    }
     return mask;
 }

@@ -158,20 +158,20 @@ bool ObjectDetector::detectCrosswalk(const cv::Mat& grayscale, cv::Mat& vis_out,
 }
 
 bool ObjectDetector::detectStartLine(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width) {
-    int y1 = static_cast<int>(height * 0.4);
-    int y2 = static_cast<int>(height * 1);
-    int x1 = static_cast<int>(width * 0.2);
-    int x2 = static_cast<int>(width * 0.8);
+    int y1 = static_cast<int>(height * STARTLINE_DETECTION_Y1);
+    int y2 = static_cast<int>(height * STARTLINE_DETECTION_Y2);
+    int x1 = static_cast<int>(width * STARTLINE_DETECTION_X1);
+    int x2 = static_cast<int>(width * STARTLINE_DETECTION_X2);
 
     cv::Mat roi = grayscale(cv::Range(y1, y2), cv::Range(x1, x2));
     std::vector<cv::Point2f> corners;
-    cv::goodFeaturesToTrack(roi, corners, 50, 0.01, 10);
+    cv::goodFeaturesToTrack(roi, corners, GFT_MAX_CORNER_QUANTITY, GFT_CORNER_QUALITY_LEVEL, GFT_MIN_CORNER_DISTANCE);
 
     for (const auto& pt : corners) {
         cv::circle(vis_out, cv::Point(cvRound(pt.x) + x1, cvRound(pt.y) + y1), 2, cv::Scalar(0, 255, 255), -1);
     }
 
-    if (corners.size() >= 50) {
+    if (corners.size() >= STARTLINE_DETECTION_THRESHOLD) {
         cv::putText(vis_out, "Start Line", cv::Point(x1 + 10, y1 + 30),
                     cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 2);
         cv::rectangle(vis_out, cv::Rect(x1, y1, x2 - x1, y2 - y1), cv::Scalar(0, 255, 255), 2);

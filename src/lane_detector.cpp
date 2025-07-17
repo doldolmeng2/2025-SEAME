@@ -66,7 +66,7 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
 
     for (int y : target_rows) {
         const uchar* row_ptr = (WHITE_LINE_DRIVE ? white_mask.ptr<uchar>(y) : yellow_mask.ptr<uchar>(y));
-        auto blobs = findBlobs(row_ptr, width, MIN_BLOB_SIZE);
+        auto blobs = findBlobs(row_ptr, width);
 
         if (blobs.size() >= 2) {
             int x1 = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();

@@ -138,7 +138,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     try {
         if (manual_mode_) {
             // 수동 모드: 조이스틱 입력값 그대로 적용
-            throttle_ = manual_throttle_; 
+            throttle_ = manual_throttle_ - 0.2f; 
             steering_ = manual_steering_- 0.35f;
         } else {
             // 자동 모드: 상태 머신 기반 제어

@@ -55,6 +55,7 @@ float GFT_CORNER_QUALITY_LEVEL;
 int GFT_MIN_CORNER_DISTANCE;
 float STEERING_OFFSET;
 float STEERING_OFFSET_2;
+int YELLOW_ROI_REMOVE_DELAY;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -116,4 +117,5 @@ void load_constants(const std::string& path) {
     GFT_MIN_CORNER_DISTANCE = j["GFT_MIN_CORNER_DISTANCE"];
     STEERING_OFFSET = j["STEERING_OFFSET"];
     STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
+    YELLOW_ROI_REMOVE_DELAY = j["YELLOW_ROI_REMOVE_DELAY"];
 }

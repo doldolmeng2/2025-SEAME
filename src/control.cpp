@@ -15,6 +15,7 @@ using namespace std::chrono;  // 시간 관련 유틸 사용
 bool crosswalk_flag = false;               // 횡단보도 감지 플래그 (한 번만 처리)
 bool crosswalk_ignore_stopline = false;    // 횡단보도 후 정지선 무시 여부
 steady_clock::time_point crosswalk_resume_time;  // 정지선 무시 기간 시작 시간 저장
+std::chrono::steady_clock::time_point yellow_mode_start_time_;
 
 // Python 객체(piracer, gamepad)를 감싸는 내부 구현 구조체
 struct __attribute__((visibility("hidden"))) Controller::Impl {
@@ -168,6 +169,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
                 } else if (stop_line) {
                     // 정지선 감지 시 노란 차선 주행 전환
                     drive_state_ = DriveState::YELLOW_LINE_DRIVE;
+                    yellow_mode_start_time_ = std::chrono::steady_clock::now();
                     std::cout << "[INFO] 정지선 감지됨 → 노란 차선 주행으로 전환\n";
                 }
             }
@@ -185,6 +187,14 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
                 // 정지 상태: throttle_ = 0 로 설정됨
             }
             else if (drive_state_ == DriveState::YELLOW_LINE_DRIVE) {
+                WHITE_LINE_DRIVE = false;
+
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - yellow_mode_start_time_).count();
+
+                if (elapsed >= YELLOW_ROI_REMOVE_DELAY) {
+                    ROI_REMOVE_LEFT = true;
+                }
                 // 노란 차선 주행 상태: 좌측 ROI 제거, 흰색 주행 비활성화
                 ROI_REMOVE_LEFT = true;
                 WHITE_LINE_DRIVE = false;

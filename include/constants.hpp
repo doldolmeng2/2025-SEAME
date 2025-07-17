@@ -53,6 +53,7 @@ extern float GFT_CORNER_QUALITY_LEVEL;
 extern int GFT_MIN_CORNER_DISTANCE;
 extern float STEERING_OFFSET;
 extern float STEERING_OFFSET_2;
+extern int YELLOW_ROI_REMOVE_DELAY;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

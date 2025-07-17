@@ -25,7 +25,7 @@ struct __attribute__((visibility("hidden"))) Controller::Impl {
 // 생성자: Python 인터프리터 초기화 및 객체 생성, 게임패드 스레드 시작
 Controller::Controller()
     : drive_state_(DriveState::DRIVE),   // 초기 주행 상태 설정
-      steering_(-0.25f),                 // 기본 스티어링 초기값
+      steering_(-0.35f),                 // 기본 스티어링 초기값
       throttle_(0.0f),                   // 기본 스로틀 초기값
       impl_(new Impl()),                 // Impl 구조체 동적 할당
       manual_mode_(true),                // 초기 모드를 수동으로 설정
@@ -138,8 +138,8 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     try {
         if (manual_mode_) {
             // 수동 모드: 조이스틱 입력값 그대로 적용
-            throttle_ = manual_throttle_ - 0.25f;
-            steering_ = manual_steering_;
+            throttle_ = manual_throttle_; 
+            steering_ = manual_steering_- 0.35f;
         } else {
             // 자동 모드: 상태 머신 기반 제어
             if (drive_state_ == DriveState::DRIVE && !crosswalk_flag) {
@@ -150,10 +150,6 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
                     drive_state_ = DriveState::WAIT_AFTER_CROSSWALK;
                     wait_start_time_ = steady_clock::now();
                     std::cout << "[INFO] 횡단보도 감지됨 → 대기 시작\n";
-                } else if (start_line) {
-                    // 출발선 감지 시 정지 상태로 전환
-                    drive_state_ = DriveState::STOP_AT_START_LINE;
-                    std::cout << "[INFO] 출발선 감지 → 정지\n";
                 }
             }
             else if (drive_state_ == DriveState::DRIVE && crosswalk_flag) {
@@ -165,6 +161,10 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
                         crosswalk_ignore_stopline = false;
                         std::cout << "[INFO] 정지선 감지 다시 활성화됨\n";
                     }
+                } else if (start_line) {
+                    // 출발선 감지 시 정지 상태로 전환
+                    drive_state_ = DriveState::STOP_AT_START_LINE;
+                    std::cout << "[INFO] 출발선 감지 → 정지\n";
                 } else if (stop_line) {
                     // 정지선 감지 시 노란 차선 주행 전환
                     drive_state_ = DriveState::YELLOW_LINE_DRIVE;

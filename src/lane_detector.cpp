@@ -88,8 +88,8 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
             lane_points.emplace_back(x1, y);
             lane_points.emplace_back(x2, y);
 
-            cv::circle(vis_out, cv::Point(x1, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 255), -1);
+            cv::circle(vis_out, cv::Point(x1, y), 3, cv::Scalar(0, 255, 127), -1);
+            cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 127), -1);
         } else if (blobs.size() == 1) {
             int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
             int lane_gap = (i == 0) ? prev_lane_gap_top_ : prev_lane_gap_bottom_;
@@ -99,8 +99,8 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
             lane_points.emplace_back(x, y);
             lane_points.emplace_back(x_other, y);
 
-            cv::circle(vis_out, cv::Point(x, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x_other, y), 3, cv::Scalar(0, 128, 255), -1);
+            cv::circle(vis_out, cv::Point(x, y), 3, cv::Scalar(0, 255, 127), -1);
+            cv::circle(vis_out, cv::Point(x_other, y), 3, cv::Scalar(0, 128, 0), -1);
         } else {
             lane_points.emplace_back(center_x - 60, y);
             lane_points.emplace_back(center_x + 60, y);

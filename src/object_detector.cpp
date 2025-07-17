@@ -36,10 +36,10 @@ int ObjectDetector::process(const cv::Mat& frame, cv::Mat& vis_out, std::vector<
     grayscale.setTo(255, white_mask);
     grayscale.setTo(127, yellow_mask);
 
-    if (VIEWER) {
-        cv::imshow("Grayscale Lane", grayscale);
-        cv::waitKey(1);
-    }
+    // if (VIEWER) {
+    //     cv::imshow("Grayscale Lane", grayscale);
+    //     cv::waitKey(1);
+    // }
 
     vis_out = frame.clone();
     // 추가 감지

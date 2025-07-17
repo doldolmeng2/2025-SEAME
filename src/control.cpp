@@ -111,7 +111,7 @@ void Controller::startGamepadThread() {
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count) {
     py::gil_scoped_acquire acquire;
 
-    std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
+    // std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
 
     try {
         if (manual_mode_) {
@@ -189,19 +189,28 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
         std::cerr << "[ERROR] Python 제어 실패: " << e.what() << "\n";
     }
 
-    // 상태 출력
-    switch (drive_state_) {
-        case DriveState::DRIVE: std::cout << "주행"; break;
-        case DriveState::WAIT_AFTER_CROSSWALK: std::cout << "횡단보도 대기"; break;
-        case DriveState::STOP_AT_START_LINE: std::cout << "출발선 정지"; break;
-    }
-    std::cout << " | cross_offset: " << cross_offset
-              << " | steering: " << steering_
-              << " | throttle: " << throttle_ << "\n";
-}
+//     // 상태 출력
+//     switch (drive_state_) {
+//         case DriveState::DRIVE: std::cout << "주행"; break;
+//         case DriveState::WAIT_AFTER_CROSSWALK: std::cout << "횡단보도 대기"; break;
+//         case DriveState::STOP_AT_START_LINE: std::cout << "출발선 정지"; break;
+//     }
+//     std::cout << " | cross_offset: " << cross_offset
+//               << " | steering: " << steering_
+//               << " | throttle: " << throttle_ << "\n";
+// }
 
-float Controller::computeSteering(int offset) const {  // 조향 민감도
-    return std::clamp(-0.25f + STEERING_KP * offset, -0.7f, 0.7f);
+// computeSteering: 오프셋 기반 조향 계산 (비례 제어 + 범위 제한)
+float Controller::computeSteering(int offset) const {
+    static steady_clock::time_point last_debug_time = steady_clock::now() - milliseconds(100);
+    auto now = steady_clock::now();
+    float steering = std::clamp(-0.25f + STEERING_KP * offset, -0.7f, 0.7f);
+    // 0.1초(100ms)마다 디버그 로그 출력
+    if (duration_cast<milliseconds>(now - last_debug_time).count() >= 100) {
+        std::cout << "[DEBUG] 조향 계산 - offset: " << offset << ", steering: " << steering << "\n";
+        last_debug_time = now;
+    }
+    return steering;
 }
 
 float Controller::computeThrottle(int offset) const {

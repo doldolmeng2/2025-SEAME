@@ -8,7 +8,7 @@
   "VALID_V_MIN": 90,
   "YELLOW_H_MIN": 10,
   "YELLOW_H_MAX": 50,
-  "VIEWER": false,
+  "VIEWER": true,
   "STEERING_KP": 0.018,
   "THROTTLE_KP": 0.001,
   "MAX_THROTTLE": 0.35,

@@ -65,6 +65,11 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     cv::Mat white_mask = (s < WHITE_S_MAX) & (v >= WHITE_V_MIN) & valid_mask;
     cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
 
+    // if (VIEWER) {
+    //     cv::imshow("roi_mask", roi_mask);
+    //     cv::waitKey(1);
+    // }
+
     vis_out = frame.clone();
     std::vector<int> target_rows = { static_cast<int>(height * 0.35f), static_cast<int>(height * 0.65f) };
     std::vector<cv::Point> lane_points;
@@ -141,9 +146,17 @@ cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {
     int x_center = width / 2;
     int long_half = width * LONG_HALF;
     int short_half = static_cast<int>(width * SHORT_HALF);
-    std::vector<cv::Point> pts = {{x_center - long_half, height}, {x_center + long_half, height}, {x_center + short_half, y_top}, {x_center - short_half, y_top}};
+    std::vector<cv::Point> pts = {
+        {x_center - long_half, height}, 
+        {x_center + long_half, height}, 
+        {x_center + short_half, y_top}, 
+        {x_center - short_half, y_top}};
     cv::fillConvexPoly(mask, pts, 255);
     if (ROI_REMOVE_LEFT)
-        cv::rectangle(mask, cv::Point(0, 0), cv::Point(ROI_REMOVE_LEFT_X_THRESHOLD, height), 0, cv::FILLED);
+        cv::rectangle(mask, 
+            cv::Point(0, 0), 
+            cv::Point(ROI_REMOVE_LEFT_X_THRESHOLD, height), 
+            0, 
+            cv::FILLED);
     return mask;
 }

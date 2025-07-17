@@ -1,22 +1,38 @@
-// object_detector.hpp
-#pragma once
+#ifndef OBJECT_DETECTOR_HPP
+#define OBJECT_DETECTOR_HPP
 
 #include <opencv2/opencv.hpp>
-#include <vector>
+#include "constants.hpp"
+
+// 객체 감지 결과를 담을 구조체
+struct DetectionResults {
+    bool stopline;   // 정지선 감지 여부
+    bool crosswalk;  // 횡단보도 감지 여부
+    bool startline;  // 출발선 감지 여부
+};
 
 class ObjectDetector {
 public:
-    ObjectDetector();
+    ObjectDetector() = default;
 
-    // 전처리 및 감지 실행
-    int process(const cv::Mat& frame, cv::Mat& vis_out, std::vector<bool>& detection_flags);
+    // 객체 감지 함수: 정지선, 횡단보도, 출발선 감지
+    DetectionResults detect(const cv::Mat& frame, cv::Mat& vis_out);
 
 private:
-    // 영역 마스크 생성
-    cv::Mat createTrapezoidMask(int height, int width);
+    // 그레이스케일 변환 함수
+    cv::Mat toGrayscale(const cv::Mat& frame) const;
 
-    // 개별 객체 감지 함수
-    bool detectStopLine(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width);
-    bool detectCrosswalk(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width);
-    bool detectStartLine(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width);
+    // ROI 마스크 생성 함수
+    cv::Mat createRoiMask(int height, int width) const;
+
+    // 정지선 감지 함수
+    bool detectStopLine(const cv::Mat& gray, cv::Mat& vis_out) const;
+
+    // 횡단보도 감지 함수
+    bool detectCrosswalk(const cv::Mat& gray, cv::Mat& vis_out) const;
+
+    // 출발선 감지 함수
+    bool detectStartLine(const cv::Mat& gray, cv::Mat& vis_out) const;
 };
+
+#endif  // OBJECT_DETECTOR_HPP

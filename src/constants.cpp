@@ -1,119 +1,143 @@
 #include "constants.hpp"
 #include <fstream>
-#include <iostream>
-#include <nlohmann/json.hpp>
+#include <stdexcept>
 
-// 전역 변수 정의
-int FRAME_WIDTH;
-int FRAME_HEIGHT;
-int ROI_Y_START;
-int ROI_Y_END;
-int WHITE_S_MAX;
-int WHITE_V_MIN;
-int VALID_V_MIN;
-int YELLOW_H_MIN;
-int YELLOW_H_MAX;
-bool VIEWER;
-float STEERING_KP;
-float THROTTLE_KP;
-float MAX_THROTTLE;
-float BASE_THROTTLE;
-int WAIT_SECONDS;
-int RED_H_MIN1;
-int RED_H_MIN2;
-int RED_H_MAX1;
-int RED_H_MAX2;
-int RED_S_MIN;
-int RED_V_MIN;
-int Y_TOP;
-int LONG_HALF;
-int SHORT_HALF;
-bool ROI_REMOVE_LEFT;
-int ROI_REMOVE_LEFT_X_THRESHOLD;
-bool WHITE_LINE_DRIVE;
-int YELLOW_PIXEL_THRESHOLD;
-int DEFAULT_LANE_GAP;
-float STOPLINE_DETECTION_Y1;
-float STOPLINE_DETECTION_Y2;
-float STOPLINE_DETECTION_THRESHOLD;
-float AVG_PARAM;
-float INTER_PARAM;
-float CROSSWALK_DETECTION_X1;
-float CROSSWALK_DETECTION_X2;
-float CROSSWALK_DETECTION_Y1;
-float CROSSWALK_DETECTION_Y2;
-int CROSSWALK_DETECTION_RECT_HEIGHT_THRESHOLD;
-int CROSSWALK_DETECTION_RECT_WIDTH_THRESHOLD;
-int CROSSWALK_DETECTION_RECT_COUNT_THRESHOLD;
-float STARTLINE_DETECTION_X1;
-float STARTLINE_DETECTION_X2;
-float STARTLINE_DETECTION_Y1;
-float STARTLINE_DETECTION_Y2;
-int STARTLINE_DETECTION_THRESHOLD;
-int GFT_MAX_CORNER_QUANTITY;
-float GFT_CORNER_QUALITY_LEVEL;
-int GFT_MIN_CORNER_DISTANCE;
-float STEERING_OFFSET;
-float STEERING_OFFSET_2;
+using json = nlohmann::json;
 
-void load_constants(const std::string& path) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw std::runtime_error("constants.json 파일 열기 실패");
+namespace Constants {
+    // 변수 정의
+    int    FRAME_WIDTH;
+    int    FRAME_HEIGHT;
+    bool   VIEWER;
+
+    int    ROI_Y_START;
+    int    ROI_Y_END;
+    bool   REMOVE_LEFT_ROI;
+    int    REMOVE_LEFT_ROI_THRESHOLD;
+
+    int    VALID_V_MIN;
+    int    WHITE_S_MAX;
+    int    WHITE_V_MIN;
+    int    YELLOW_H_MIN;
+    int    YELLOW_H_MAX;
+
+    bool   WHITE_LINE_DRIVE;
+    int    YELLOW_PIXEL_THRESHOLD;
+    int    DEFAULT_LANE_GAP;
+    float  AVG_PARAM;
+    float  INTER_PARAM;
+
+    float  STOPLINE_Y1;
+    float  STOPLINE_Y2;
+    float  STOPLINE_THRESHOLD;
+
+    float  CROSSWALK_X1;
+    float  CROSSWALK_X2;
+    float  CROSSWALK_Y1;
+    float  CROSSWALK_Y2;
+    int    CROSSWALK_RECT_HEIGHT;
+    int    CROSSWALK_RECT_WIDTH;
+    int    CROSSWALK_COUNT_THRESHOLD;
+
+    float  STARTLINE_X1;
+    float  STARTLINE_X2;
+    float  STARTLINE_Y1;
+    float  STARTLINE_Y2;
+    int    STARTLINE_THRESHOLD;
+
+    int    GFT_MAX_CORNERS;
+    float  GFT_QUALITY_LEVEL;
+    int    GFT_MIN_DISTANCE;
+
+    FollowLaneMode follow_lane_mode;
+    float          lane_follow_steering_bias;
+
+    float  STEERING_OFFSET;
+    float  STEERING_OFFSET_2;
+    float  STEERING_KP;
+    float  STEERING_KI;
+    float  STEERING_KD;
+    float  THROTTLE_KP;
+    float  BASE_THROTTLE;
+    float  BASE_THROTTLE_LOW;
+    float  BASE_THROTTLE_YELLOW;
+    float  MAX_THROTTLE;
+
+    void loadConstants(const std::string& path) {
+        std::ifstream in(path);
+        if (!in.is_open()) throw std::runtime_error("constants.json 열기 실패: " + path);
+        json j; in >> j;
+
+        // 영상 및 뷰어 관련
+        FRAME_WIDTH            = j.value("FRAME_WIDTH", 320);
+        FRAME_HEIGHT           = j.value("FRAME_HEIGHT", 200);
+        VIEWER                 = j.value("VIEWER", true);
+
+        // ROI 관련
+        ROI_Y_START            = j.value("ROI_Y_START", 100);
+        ROI_Y_END              = j.value("ROI_Y_END", 200);
+        REMOVE_LEFT_ROI        = j.value("REMOVE_LEFT_ROI", false);
+        REMOVE_LEFT_ROI_THRESHOLD = j.value("REMOVE_LEFT_ROI_THRESHOLD", 0);
+
+        // 색상 임계값
+        VALID_V_MIN            = j.value("VALID_V_MIN", 90);
+        WHITE_S_MAX            = j.value("WHITE_S_MAX", 80);
+        WHITE_V_MIN            = j.value("WHITE_V_MIN", 120);
+        YELLOW_H_MIN           = j.value("YELLOW_H_MIN", 10);
+        YELLOW_H_MAX           = j.value("YELLOW_H_MAX", 50);
+
+        // 차선 추적 설정
+        WHITE_LINE_DRIVE       = j.value("WHITE_LINE_DRIVE", true);
+        YELLOW_PIXEL_THRESHOLD = j.value("YELLOW_PIXEL_THRESHOLD", 1200);
+        DEFAULT_LANE_GAP       = j.value("DEFAULT_LANE_GAP", 430);
+        AVG_PARAM              = j.value("AVG_PARAM", 0.5f);
+        INTER_PARAM            = j.value("INTER_PARAM", 0.0f);
+
+        // 정지선 감지
+        STOPLINE_Y1            = j.value("STOPLINE_Y1", 0.5f);
+        STOPLINE_Y2            = j.value("STOPLINE_Y2", 0.95f);
+        STOPLINE_THRESHOLD     = j.value("STOPLINE_THRESHOLD", 0.2f);
+
+        // 횡단보도 감지
+        CROSSWALK_X1           = j.value("CROSSWALK_X1", 0.2f);
+        CROSSWALK_X2           = j.value("CROSSWALK_X2", 0.8f);
+        CROSSWALK_Y1           = j.value("CROSSWALK_Y1", 0.1f);
+        CROSSWALK_Y2           = j.value("CROSSWALK_Y2", 0.6f);
+        CROSSWALK_RECT_HEIGHT  = j.value("CROSSWALK_RECT_HEIGHT", 20);
+        CROSSWALK_RECT_WIDTH   = j.value("CROSSWALK_RECT_WIDTH", 80);
+        CROSSWALK_COUNT_THRESHOLD = j.value("CROSSWALK_COUNT_THRESHOLD", 3);
+
+        // 출발선 감지
+        STARTLINE_X1           = j.value("STARTLINE_X1", 0.2f);
+        STARTLINE_X2           = j.value("STARTLINE_X2", 0.8f);
+        STARTLINE_Y1           = j.value("STARTLINE_Y1", 0.4f);
+        STARTLINE_Y2           = j.value("STARTLINE_Y2", 1.0f);
+        STARTLINE_THRESHOLD    = j.value("STARTLINE_THRESHOLD", 80);
+
+        // 특징점 감지
+        GFT_MAX_CORNERS        = j.value("GFT_MAX_CORNERS", 100);
+        GFT_QUALITY_LEVEL      = j.value("GFT_QUALITY_LEVEL", 0.01f);
+        GFT_MIN_DISTANCE       = j.value("GFT_MIN_DISTANCE", 10);
+
+        // 차선 추적 모드
+        {
+            std::string mode = j.value("follow_lane_mode", "CENTER");
+            if      (mode == "RIGHT") follow_lane_mode = FollowLaneMode::RIGHT;
+            else if (mode == "LEFT")  follow_lane_mode = FollowLaneMode::LEFT;
+            else                        follow_lane_mode = FollowLaneMode::CENTER;
+        }
+
+        // 제어 값들
+        lane_follow_steering_bias = j.value("lane_follow_steering_bias", 0.10f);
+        STEERING_OFFSET         = j.value("STEERING_OFFSET", -0.25f);
+        STEERING_OFFSET_2       = j.value("STEERING_OFFSET_2", -0.27f);
+        STEERING_KP             = j.value("STEERING_KP", 0.018f);
+        STEERING_KI             = j.value("STEERING_KI", 0.02f);
+        STEERING_KD             = j.value("STEERING_KD", 0.05f);
+        THROTTLE_KP             = j.value("THROTTLE_KP", 0.005f);
+        BASE_THROTTLE           = j.value("BASE_THROTTLE", 0.4f);
+        BASE_THROTTLE_LOW      = j.value("BASE_THROTTLE_LOW", 0.2f);
+        BASE_THROTTLE_YELLOW   = j.value("BASE_THROTTLE_YELLOW", 0.3f);
+        MAX_THROTTLE            = j.value("MAX_THROTTLE", 0.8f);
     }
-
-    nlohmann::json j;
-    file >> j;
-
-    FRAME_WIDTH = j["FRAME_WIDTH"];
-    FRAME_HEIGHT = j["FRAME_HEIGHT"];
-    ROI_Y_START = j["ROI_Y_START"];
-    ROI_Y_END = j["ROI_Y_END"];
-    WHITE_S_MAX = j["WHITE_S_MAX"];
-    WHITE_V_MIN = j["WHITE_V_MIN"];
-    VALID_V_MIN = j["VALID_V_MIN"];
-    YELLOW_H_MIN = j["YELLOW_H_MIN"];
-    YELLOW_H_MAX = j["YELLOW_H_MAX"];
-    VIEWER = j["VIEWER"];
-    STEERING_KP = j["STEERING_KP"];
-    THROTTLE_KP = j["THROTTLE_KP"];
-    MAX_THROTTLE = j["MAX_THROTTLE"];
-    BASE_THROTTLE = j["BASE_THROTTLE"];
-    WAIT_SECONDS = j["WAIT_SECONDS"];
-    RED_H_MIN1= j["RED_H_MIN1"];
-    RED_H_MIN2= j["RED_H_MIN2"];
-    RED_H_MAX1= j["RED_H_MAX1"];
-    RED_H_MAX2= j["RED_H_MAX2"];
-    RED_S_MIN= j["RED_S_MIN"];
-    RED_V_MIN= j["RED_V_MIN"];
-    Y_TOP= j["Y_TOP"];
-    LONG_HALF= j["LONG_HALF"];
-    SHORT_HALF= j["SHORT_HALF"];
-    ROI_REMOVE_LEFT= j["ROI_REMOVE_LEFT"];
-    ROI_REMOVE_LEFT_X_THRESHOLD= j["ROI_REMOVE_LEFT_X_THRESHOLD"];
-    WHITE_LINE_DRIVE = j["WHITE_LINE_DRIVE"];
-    YELLOW_PIXEL_THRESHOLD = j["YELLOW_PIXEL_THRESHOLD"];
-    DEFAULT_LANE_GAP = j["DEFAULT_LANE_GAP"];
-    STOPLINE_DETECTION_Y1 = j["STOPLINE_DETECTION_Y1"];
-    STOPLINE_DETECTION_Y2 = j["STOPLINE_DETECTION_Y2"];
-    STOPLINE_DETECTION_THRESHOLD = j["STOPLINE_DETECTION_THRESHOLD"];
-    AVG_PARAM = j["AVG_PARAM"];
-    INTER_PARAM = j["INTER_PARAM"];
-    CROSSWALK_DETECTION_X1 = j["CROSSWALK_DETECTION_X1"];
-    CROSSWALK_DETECTION_X2 = j["CROSSWALK_DETECTION_X2"];
-    CROSSWALK_DETECTION_Y1 = j["CROSSWALK_DETECTION_Y1"];
-    CROSSWALK_DETECTION_Y2 = j["CROSSWALK_DETECTION_Y2"];
-    CROSSWALK_DETECTION_RECT_HEIGHT_THRESHOLD = j["CROSSWALK_DETECTION_RECT_HEIGHT_THRESHOLD"];
-    CROSSWALK_DETECTION_RECT_WIDTH_THRESHOLD =  j["CROSSWALK_DETECTION_RECT_WIDTH_THRESHOLD"];
-    CROSSWALK_DETECTION_RECT_COUNT_THRESHOLD = j["CROSSWALK_DETECTION_RECT_COUNT_THRESHOLD"];
-    STARTLINE_DETECTION_X1 = j["STARTLINE_DETECTION_X1"];
-    STARTLINE_DETECTION_X2 = j["STARTLINE_DETECTION_X2"];
-    STARTLINE_DETECTION_Y1 = j["STARTLINE_DETECTION_Y1"];
-    STARTLINE_DETECTION_Y2 = j["STARTLINE_DETECTION_Y2"];
-    STARTLINE_DETECTION_THRESHOLD = j["STARTLINE_DETECTION_THRESHOLD"];
-    GFT_MAX_CORNER_QUANTITY = j["GFT_MAX_CORNER_QUANTITY"];
-    GFT_CORNER_QUALITY_LEVEL = j["GFT_CORNER_QUALITY_LEVEL"];
-    GFT_MIN_CORNER_DISTANCE = j["GFT_MIN_CORNER_DISTANCE"];
-    STEERING_OFFSET = j["STEERING_OFFSET"];
-    STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
 }

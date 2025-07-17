@@ -1,12 +1,21 @@
-#pragma once
+#ifndef USB_CAM_HPP
+#define USB_CAM_HPP
 
 #include <opencv2/opencv.hpp>
+#include "constants.hpp"
 
 class USBCam {
 public:
-    bool init();             // 카메라 초기화
-    cv::Mat getFrame();      // 프레임 가져오기 (320x200으로 리사이즈)
+    USBCam() = default;
+
+    // 카메라 초기화 함수
+    bool init();
+
+    // 카메라로부터 프레임을 읽어오는 함수
+    cv::Mat getFrame();
 
 private:
-    cv::VideoCapture cap;    // OpenCV GStreamer 캡처 객체
+    cv::VideoCapture cap;  // 카메라 캡처 객체
 };
+
+#endif  // USB_CAM_HPP

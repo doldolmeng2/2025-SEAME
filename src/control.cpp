@@ -131,111 +131,69 @@ void Controller::startGamepadThread() {
 // cross_offset: 차선 중심 대비 오프셋
 // yellow_pixel_count: 노란색 차선 픽셀 수
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count) {
-    py::gil_scoped_acquire acquire; // Python 호출 전 GIL 획득
-
-    // std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
+    py::gil_scoped_acquire acquire;
 
     try {
         if (manual_mode_) {
-            // 수동 모드: 조이스틱 입력값 그대로 적용
-            throttle_ = manual_throttle_ - 0.2f; 
-            steering_ = manual_steering_- 0.35f;
+            throttle_ = manual_throttle_ - 0.2f;
+            steering_ = manual_steering_ - 0.35f;
         } else {
             // 자동 모드: 상태 머신 기반 제어
-            if (drive_state_ == DriveState::DRIVE && !crosswalk_flag) {
-                // 일반 주행 중
+            if (drive_state_ == DriveState::DRIVE && !is_waiting_for_crosswalk) {
                 if (crosswalk) {
                     // 횡단보도 감지 시 대기 상태로 전환
-                    crosswalk_flag = true;
+                    is_waiting_for_crosswalk = true;
                     drive_state_ = DriveState::WAIT_AFTER_CROSSWALK;
-                    wait_start_time_ = steady_clock::now();
                     std::cout << "[INFO] 횡단보도 감지됨 → 대기 시작\n";
                 }
-            }
-            else if (drive_state_ == DriveState::DRIVE && crosswalk_flag) {
-                // 횡단보도 이후 주행 재개 및 정지선 처리
-                if (crosswalk_ignore_stopline) {
-                    // 무시 기간 이후 정지선 감지 재활성화
-                    auto since_resume = duration_cast<seconds>(steady_clock::now() - crosswalk_resume_time).count();
-                    if (since_resume > 2) {
-                        crosswalk_ignore_stopline = false;
-                        std::cout << "[INFO] 정지선 감지 다시 활성화됨\n";
-                    }
-                } else if (start_line) {
-                    // 출발선 감지 시 정지 상태로 전환
-                    drive_state_ = DriveState::STOP_AT_START_LINE;
-                    std::cout << "[INFO] 출발선 감지 → 정지\n";
-                } else if (stop_line) {
-                    // 정지선 감지 시 노란 차선 주행 전환
-                    drive_state_ = DriveState::YELLOW_LINE_DRIVE;
-                    std::cout << "[INFO] 정지선 감지됨 → 노란 차선 주행으로 전환\n";
-                }
-            }
+            } 
             else if (drive_state_ == DriveState::WAIT_AFTER_CROSSWALK) {
-                // 대기 후 지정 시간 경과 시 주행 재개
-                auto elapsed = duration_cast<seconds>(steady_clock::now() - wait_start_time_).count();
-                if (elapsed >= WAIT_SECONDS) {
-                    crosswalk_ignore_stopline = true;  // 정지선 무시 시작
-                    crosswalk_resume_time = steady_clock::now();
-                    drive_state_ = DriveState::DRIVE;
-                    std::cout << "[INFO] 횡단보도 정지 후 주행 재개\n";
-                }
-            }
-            else if (drive_state_ == DriveState::STOP_AT_START_LINE) {
-                // 정지 상태: throttle_ = 0 로 설정됨
-            }
-            else if (drive_state_ == DriveState::YELLOW_LINE_DRIVE) {
-                // 노란 차선 주행 상태: 좌측 ROI 제거, 흰색 주행 비활성화
-                ROI_REMOVE_LEFT = true;
-                WHITE_LINE_DRIVE = false;
-                // 노란 픽셀 감소 시 일반 주행으로 복귀
-                if (stop_line) {
-                    STEERING_OFFSET = STEERING_OFFSET_2;
-                }
-
-                if (yellow_pixel_count < YELLOW_PIXEL_THRESHOLD) {
-                    drive_state_ = DriveState::DRIVE;
-                    ROI_REMOVE_LEFT = false;
-                    WHITE_LINE_DRIVE = true;
-                    std::cout << "[INFO] 노란 차선 사라짐 → 일반 흰색 차선 주행으로 전환\n";
-                }
+                // 횡단보도 대기 후
+                drive_state_ = DriveState::DRIVE;
+                std::cout << "[INFO] 횡단보도 대기 종료\n";
             }
 
-            // 스로틀 설정: 정지 상태면 0, 아니면 함수 호출
-            if (drive_state_ == DriveState::STOP_AT_START_LINE ||
-                drive_state_ == DriveState::WAIT_AFTER_CROSSWALK) {
-                throttle_ = 0.0f;
+            // 정지선 처리
+            if (stop_line) {
+                // 정지선 감지 시
+                follow_right_lane = false;  // 오른쪽 차선에서 왼쪽 차선으로 전환
+                follow_left_lane = true;  // 왼쪽 차선 추적
+                throttle_ = 0.0f;  // 정지
+                steering_ = 0.0f;  // 정지
+                std::cout << "[INFO] 정지선 감지됨 → 왼쪽 차선으로 전환\n";
             } else {
-                throttle_ = computeThrottle(cross_offset);
+                throttle_ = computeThrottle(cross_offset);  // P 제어를 통한 스로틀 값 계산
+                steering_ = computeSteering(cross_offset);  // PID 제어를 통한 조향값 계산
             }
-            // 스티어링 설정: 차선 오프셋 기반 계산
-            steering_ = computeSteering(cross_offset);
         }
-        // PiRacerPro Python 객체에 제어 명령 전송
-        impl_->piracer_.attr("set_steering_percent")(steering_);
-        impl_->piracer_.attr("set_throttle_percent")(throttle_);
-    }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cerr << "[ERROR] Python 제어 실패: " << e.what() << "\n";
     }
-    // 현재 상태 로그 출력
-    // switch (drive_state_) {
-    //     case DriveState::DRIVE:                  std::cout << "주행"; break;
-    //     case DriveState::WAIT_AFTER_CROSSWALK:   std::cout << "횡단보도 대기"; break;
-    //     case DriveState::STOP_AT_START_LINE:     std::cout << "출발선 정지"; break;
-    //     default:                                 break;
-    // }
-    // std::cout << " | cross_offset: " << cross_offset
-    //           << " | steering: " << steering_
-    //           << " | throttle: " << throttle_ << "\n";
 }
 
-// computeSteering: 오프셋 기반 조향 계산 (비례 제어 + 범위 제한)
-float Controller::computeSteering(int offset) const {
-    return std::clamp(STEERING_OFFSET + STEERING_KP * offset, -0.7f, 0.7f);
+
+float Controller::computeSteering(int offset) {
+    // P, I, D를 위한 변수들
+    float p_term = STEERING_KP * offset;  // 비례
+    integral += offset;  // 적분
+    float i_term = STEERING_KI * integral;  // 적분
+    float d_term = STEERING_KD * (offset - prev_error);  // 미분
+
+    // PID 제어 계산
+    float steering = p_term + i_term + d_term;
+
+    // 이전 오차를 현재 오차로 갱신
+    prev_error = offset;
+
+    // 조향 범위 제한
+    return std::clamp(steering, -1.0f, 1.0f);
 }
 
-// computeThrottle: 현재 고정 스로틀 반환 (추후 속도 제어 로직 보완 가능)
-float Controller::computeThrottle(int /*offset*/) const {
-    return BASE_THROTTLE;
+// 스로틀 계산을 위한 P 제어
+float Controller::computeThrottle(int offset) {
+    // 차선의 오프셋에 따른 스로틀 값 계산 (P 제어)
+    float throttle = THROTTLE_KP * offset;  // 차선 오프셋에 비례하는 스로틀 값
+
+    // 최소/최대 속도 제한
+    return std::clamp(throttle, -MAX_THROTTLE, MAX_THROTTLE);
 }

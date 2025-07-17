@@ -71,10 +71,12 @@ int main(int argc, char** argv) {
     // 상수 파일 로드
     try {
         load_constants("constants.json"); // constants.json -> constants.hpp
-        std::cout << "Steering Gain: " << STEERING_KP << "\n"; // 로드된 상수 출력
+        std::cout << "Steering KP: " << STEERING_KP << "\n"; // 로드된 상수 출력
+        std::cout << "Steering KI: " << STEERING_KI << "\n";
+        std::cout << "Steering KD: " << STEERING_KD << "\n";
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] 상수 로드 실패: " << e.what() << std::endl;
-        return 1;
+        return 1;   
     }
 
     signal(SIGINT, signal_handler); // SIGINT 시그널 핸들러 등록

@@ -12,7 +12,6 @@ extern int VALID_V_MIN;
 extern int YELLOW_H_MIN;
 extern int YELLOW_H_MAX;
 extern bool VIEWER;
-extern float STEERING_KP;
 extern float THROTTLE_KP;
 extern float MAX_THROTTLE;
 extern float BASE_THROTTLE;
@@ -53,6 +52,9 @@ extern float GFT_CORNER_QUALITY_LEVEL;
 extern int GFT_MIN_CORNER_DISTANCE;
 extern float STEERING_OFFSET;
 extern float STEERING_OFFSET_2;
+extern float STEERING_KP; // 비례 계수
+extern float STEERING_KI; // 적분 계수
+extern float STEERING_KD; // 미분 계수
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

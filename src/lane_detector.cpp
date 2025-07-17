@@ -60,16 +60,15 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     int width = frame.cols;
     int center_x = width / 2;
 
-    // 관심영역 마스크
-    cv::Mat roi_mask = createTrapezoidMask(height, width);
-    cv::Mat valid_mask = (v >= VALID_V_MIN) & roi_mask;
-    cv::Mat white_mask = (s < WHITE_S_MAX) & (v >= WHITE_V_MIN) & valid_mask;
-    cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
+    // ROI 설정 부분 주석 처리 (마스크 비활성화)
+    // cv::Mat roi_mask = createTrapezoidMask(height, width);  // ROI 생성 (차선 추적)
+    cv::Mat valid_mask = (v >= VALID_V_MIN); // ROI 마스크 없이 전체 영역을 사용
 
-    // if (VIEWER) {
-    //     cv::imshow("roi_mask", roi_mask);
-    //     cv::waitKey(1);
-    // }
+    // 흰색 차선 마스크 생성
+    cv::Mat white_mask = (s < WHITE_S_MAX) & (v >= WHITE_V_MIN) & valid_mask;
+
+    // 노란색 차선 마스크 생성
+    cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
 
     vis_out = frame.clone();
     std::vector<int> target_rows = { static_cast<int>(height * 0.35f), static_cast<int>(height * 0.65f) };
@@ -79,27 +78,23 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
         const uchar* row_ptr = (WHITE_LINE_DRIVE ? white_mask.ptr<uchar>(y) : yellow_mask.ptr<uchar>(y));
         auto blobs = findBlobs(row_ptr, width);
 
-        if (blobs.size() >= 2) {
-            int x1 = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
-            int x2 = std::accumulate(blobs[1].begin(), blobs[1].end(), 0) / blobs[1].size();
-            if (x1 > x2) std::swap(x1, x2);
-            lane_points.emplace_back(x1, y);
-            lane_points.emplace_back(x2, y);
-            cv::circle(vis_out, cv::Point(x1, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 255), -1);
-        } else if (blobs.size() == 1) {
-            int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
-            // 원근감 반영한 동적 차간 간격
-            float ratio = static_cast<float>(y) / static_cast<float>(height);
-            int lane_gap = static_cast<int>(DEFAULT_LANE_GAP * ratio);
-            int x_other = (x < center_x) ? x + lane_gap : x - lane_gap;
-            lane_points.emplace_back(x, y);
-            lane_points.emplace_back(x_other, y);
-            cv::circle(vis_out, cv::Point(x, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x_other, y), 3, cv::Scalar(0, 255, 255), -1);
-        } else {
-            lane_points.emplace_back(center_x - 60, y);
-            lane_points.emplace_back(center_x + 60, y);
+        // 오른쪽 차선만 추적
+        if (follow_right_lane) {
+            if (blobs.size() == 1) {
+                int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
+                int x_right = (x > center_x) ? x : center_x + 50;  // 오른쪽 차선만 추적
+                lane_points.emplace_back(x_right, y);
+                cv::circle(vis_out, cv::Point(x_right, y), 3, cv::Scalar(0, 255, 255), -1);
+            }
+        } 
+        // 왼쪽 차선만 추적
+        else if (follow_left_lane) {
+            if (blobs.size() == 1) {
+                int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
+                int x_left = (x < center_x) ? x : center_x - 50;  // 왼쪽 차선만 추적
+                lane_points.emplace_back(x_left, y);
+                cv::circle(vis_out, cv::Point(x_left, y), 3, cv::Scalar(0, 255, 255), -1);
+            }
         }
     }
 
@@ -109,33 +104,13 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
         offset_sum += (pt.x - center_x);
     float avg_offset = offset_sum / lane_points.size();
 
-    // 좌/우 차선 선형 교점 계산
-    cv::Point2f p_left1 = lane_points[0];
-    cv::Point2f p_left2 = lane_points[2];
-    cv::Point2f p_right1 = lane_points[1];
-    cv::Point2f p_right2 = lane_points[3];
-    float denom = (p_left1.x - p_left2.x) * (p_right1.y - p_right2.y)
-                - (p_left1.y - p_left2.y) * (p_right1.x - p_right2.x);
-    float inter_offset = 0.0f;
-    if (std::abs(denom) > 1e-6f) {
-        float num_x = (p_left1.x * p_left2.y - p_left1.y * p_left2.x) * (p_right1.x - p_right2.x)
-                    - (p_left1.x - p_left2.x) * (p_right1.x * p_right2.y - p_right1.y * p_right2.x);
-        float ix = num_x / denom;
-        inter_offset = ix - center_x;
-    }
-
     // 최종 제어 신호
-    float control = avg_offset * AVG_PARAM + inter_offset * INTER_PARAM;
+    float control = avg_offset * AVG_PARAM;
 
-    // 디버그 텍스트
-    cv::putText(vis_out, "avg: " + std::to_string(avg_offset), cv::Point(10, 30),
-                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
-    cv::putText(vis_out, "int: " + std::to_string(inter_offset), cv::Point(10, 50),
-                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
-
-    yellow_pixel_count_ = cv::countNonZero(yellow_mask);
+    yellow_pixel_count_ = cv::countNonZero(yellow_mask);  // 노란색 차선의 픽셀 수
     return static_cast<int>(control);
 }
+
 
 int LaneDetector::getYellowPixelCount() const {
     return yellow_pixel_count_;

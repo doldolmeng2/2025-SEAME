@@ -1,3 +1,4 @@
+// object_detector.cpp
 #include "object_detector.hpp"
 #include "constants.hpp"
 #include <iostream>
@@ -36,18 +37,16 @@ int ObjectDetector::process(const cv::Mat& frame, cv::Mat& vis_out, std::vector<
     grayscale.setTo(255, white_mask);
     grayscale.setTo(127, yellow_mask);
 
-    if (VIEWER) {
-        cv::imshow("Grayscale Lane", grayscale);
-        cv::waitKey(1);
-    }
-
     vis_out = frame.clone();
-    // 추가 감지
+    
+    // 객체 검출
     detection_flags[0] = detectStopLine(grayscale, vis_out, height, width);
     detection_flags[1] = detectCrosswalk(grayscale, vis_out, height, width);
     detection_flags[2] = detectStartLine(grayscale, vis_out, height, width);
+    
     return 0;
 }
+
 
 cv::Mat ObjectDetector::createTrapezoidMask(int height, int width) {
     cv::Mat mask = cv::Mat::zeros(height, width, CV_8UC1);

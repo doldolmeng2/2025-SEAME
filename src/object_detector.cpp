@@ -69,8 +69,8 @@ cv::Mat ObjectDetector::createTrapezoidMask(int height, int width) {
 }
 
 bool ObjectDetector::detectStopLine(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width) {
-    int y1 = static_cast<int>(height * 0.75);
-    int y2 = static_cast<int>(height * 0.95);
+    int y1 = static_cast<int>(height * STOPLINE_DETECTION_Y1);
+    int y2 = static_cast<int>(height * STOPLINE_DETECTION_Y2);
 
     cv::Mat roi = grayscale.rowRange(y1, y2);
     cv::Mat white_mask = (roi == 255);

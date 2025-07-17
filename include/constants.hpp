@@ -5,7 +5,22 @@
 
 namespace Constants {
     // Follow-lane 모드 정의
-    enum class FollowLaneMode { CENTER, RIGHT, LEFT };
+    enum class FollowLaneMode {
+        CENTER,
+        LEFT,
+        RIGHT
+    };
+
+    enum class DrivePhase {
+        START,
+        CENTRE_WHITE,
+        STOP_CROSSWALK,
+        RIGHT_WHITE,
+        CENTRE_YELLOW,
+        LEFT_YELLOW,
+        RIGHT_WHITE_AFTER,
+        FINISH
+    };
 
     // Video & Viewer
     extern int    FRAME_WIDTH;
@@ -65,14 +80,18 @@ namespace Constants {
     // Control gains & limits
     extern float  STEERING_OFFSET;
     extern float  STEERING_OFFSET_2;
-    extern float  STEERING_KP;
-    extern float  STEERING_KI;
-    extern float  STEERING_KD;
-    extern float  THROTTLE_KP;
-    extern float  BASE_THROTTLE;
-    extern float  BASE_THROTTLE_LOW;      // 추가!
-    extern float  BASE_THROTTLE_YELLOW;   // 추가!
-    extern float  MAX_THROTTLE;
+    // constants.hpp
+    extern const float STEERING_KP;
+    extern const float STEERING_KI;
+    extern const float STEERING_KD;
+    extern const float THROTTLE_KP;
+    extern const float BASE_THROTTLE;
+    extern const float BASE_THROTTLE_LOW;
+    extern const float BASE_THROTTLE_YELLOW;
+    extern const float MAX_THROTTLE;
+    extern const int YELLOW_PIXEL_THRESHOLD;
+    extern const int DEFAULT_LANE_GAP;
+
 
     // JSON 에서 상수를 로드
     void loadConstants(const std::string& path);

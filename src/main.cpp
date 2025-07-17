@@ -1,11 +1,10 @@
-// main.cpp
 #include "usb_cam.hpp"
 #include "video_recorder.hpp"
 #include "lane_detector.hpp"
 #include "object_detector.hpp"
 #include "control.hpp"
 #include "constants.hpp"
-
+#include <pybind11/embed.h>  // Python 인터프리터를 임베드하기 위한 헤더
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -14,7 +13,6 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
-#include <pybind11/embed.h>
 
 namespace py = pybind11;
 using namespace std::chrono_literals;
@@ -30,7 +28,7 @@ public:
     }
 
     bool init(int argc, char** argv) {
-        static py::scoped_interpreter guard{}; // 파이썬 인터프리터 실행
+        static py::scoped_interpreter guard{};  // Python 인터프리터 실행
         try {
             loadConstants("constants.json");
         } catch (const std::exception& e) {
@@ -38,6 +36,7 @@ public:
             return false;
         }
         try {
+            // Python piracer 모듈 불러오기
             py::object piracer_mod = py::module_::import("piracer");
             piracer_ = piracer_mod.attr("PiRacerProPlatform")();
         } catch (const std::exception& e) {
@@ -212,8 +211,7 @@ private:
     std::string makeFilename(const std::string& base) {
         auto now = std::chrono::system_clock::now();
         auto t   = std::chrono::system_clock::to_time_t(now);
-        std::tm tm{};
-        localtime_r(&t, &tm);
+        std::tm tm{}; localtime_r(&t, &tm);
         std::ostringstream ss;
         ss << base << "/out_"
            << std::setw(2) << std::setfill('0') << tm.tm_mday

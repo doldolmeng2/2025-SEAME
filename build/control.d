@@ -1,4 +1,2 @@
-build/control.o: src/control.cpp include/control.hpp \
- include/constants.hpp
+build/control.o: src/control.cpp include/control.hpp
 include/control.hpp:
-include/constants.hpp:

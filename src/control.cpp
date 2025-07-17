@@ -11,11 +11,6 @@
 namespace py = pybind11;  // pybind11 네임스페이스 별칭
 using namespace std::chrono;  // 시간 관련 유틸 사용
 
-// 전역 상태 변수들
-bool crosswalk_flag = false;               // 횡단보도 감지 플래그 (한 번만 처리)
-bool crosswalk_ignore_stopline = false;    // 횡단보도 후 정지선 무시 여부
-steady_clock::time_point crosswalk_resume_time;  // 정지선 무시 기간 시작 시간 저장
-
 // Python 객체(piracer, gamepad)를 감싸는 내부 구현 구조체
 struct __attribute__((visibility("hidden"))) Controller::Impl {
     py::object piracer_;   // PiRacerPro Python 객체
@@ -103,11 +98,38 @@ void Controller::startGamepadThread() {
 
                     //수동 모드로 전환될 때 상태 초기화
                     if (manual_mode_) {
-                        drive_state_ = DriveState::DRIVE;
-                        crosswalk_flag = false;
-                        crosswalk_ignore_stopline = false;
-                        ROI_REMOVE_LEFT = false;
-                        WHITE_LINE_DRIVE = true;
+                        drive_state_ = INITIAL_DRIVE_STATE;
+                        switch (INITIAL_DRIVE_STATE) {
+                            case DriveState::DRIVE:
+                                ROI_REMOVE_LEFT = false;
+                                WHITE_LINE_DRIVE = true;
+                                crosswalk_flag = false;
+                                crosswalk_ignore_stopline = false;
+                                break;
+                            case DriveState::YELLOW_LINE_DRIVE:
+                                ROI_REMOVE_LEFT = false; // 모드 시작 n초 후에 true로 바뀜. 처음에는 false임.
+                                WHITE_LINE_DRIVE = false;
+                                yellow_mode_start_time_ = steady_clock::now();
+                                crosswalk_flag = true;
+                                crosswalk_ignore_stopline = false;
+                                break;
+                            case DriveState::WAIT_AFTER_CROSSWALK:
+                                ROI_REMOVE_LEFT = false;
+                                WHITE_LINE_DRIVE = true;
+                                wait_start_time_ = steady_clock::now();
+                                crosswalk_flag = true;
+                                crosswalk_ignore_stopline = false; // 모드 시작 n초 후에 true로 바뀜. 처음에는 false임.
+                                break;
+                            case DriveState::STOP_AT_START_LINE:
+                                ROI_REMOVE_LEFT = false;
+                                WHITE_LINE_DRIVE = true;
+                                crosswalk_flag = true;
+                                crosswalk_ignore_stopline = false;
+                                break;
+                            default:
+                                std::cerr << "[WARN] 정의되지 않은 INITIAL_DRIVE_STATE\n";
+                                break;
+                        }
                         std::cout << "[INFO] 수동 모드 진입 -> 내부 상태 초기화 완료\n";
                     }
                 }
@@ -169,6 +191,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line,
                 } else if (stop_line) {
                     // 정지선 감지 시 노란 차선 주행 전환
                     drive_state_ = DriveState::YELLOW_LINE_DRIVE;
+                    yellow_mode_start_time_ = std::chrono::steady_clock::now();
                     std::cout << "[INFO] 정지선 감지됨 → 노란 차선 주행으로 전환\n";
                 }
             }
@@ -186,6 +209,14 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line,
                 // 정지 상태: throttle_ = 0 로 설정됨
             }
             else if (drive_state_ == DriveState::YELLOW_LINE_DRIVE) {
+                WHITE_LINE_DRIVE = false;
+
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::steady_clock::now() - yellow_mode_start_time_).count();
+
+                if (elapsed >= YELLOW_ROI_REMOVE_DELAY) {
+                    ROI_REMOVE_LEFT = true;
+                }
                 // 노란 차선 주행 상태: 좌측 ROI 제거, 흰색 주행 비활성화
                 ROI_REMOVE_LEFT = true;
                 WHITE_LINE_DRIVE = false;

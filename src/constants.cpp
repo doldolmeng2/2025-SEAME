@@ -55,8 +55,9 @@ float GFT_CORNER_QUALITY_LEVEL;
 int GFT_MIN_CORNER_DISTANCE;
 float STEERING_OFFSET;
 float STEERING_OFFSET_2;
-float Y_TARGET_HIGH;
-float Y_TARGET_LOW;
+int YELLOW_ROI_REMOVE_DELAY;
+DriveState INITIAL_DRIVE_STATE;
+std::vector<std::string> DRIVE_STATE_LIST;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -118,6 +119,16 @@ void load_constants(const std::string& path) {
     GFT_MIN_CORNER_DISTANCE = j["GFT_MIN_CORNER_DISTANCE"];
     STEERING_OFFSET = j["STEERING_OFFSET"];
     STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
-    Y_TARGET_HIGH = j["Y_TARGET_HIGH"];
-    Y_TARGET_LOW = j["Y_TARGET_LOW"];
+    YELLOW_ROI_REMOVE_DELAY = j["YELLOW_ROI_REMOVE_DELAY"];
+    DRIVE_STATE_LIST = j["DRIVE_STATES"].get<std::vector<std::string>>();
+    INITIAL_DRIVE_STATE = parseDriveState(j["INITIAL_DRIVE_STATE"]);
 }
+
+DriveState parseDriveState(const std::string& str) {
+    if (str == "DRIVE") return DriveState::DRIVE;
+    else if (str == "WAIT_AFTER_CROSSWALK") return DriveState::WAIT_AFTER_CROSSWALK;
+    else if (str == "STOP_AT_START_LINE") return DriveState::STOP_AT_START_LINE;
+    else if (str == "YELLOW_LINE_DRIVE") return DriveState::YELLOW_LINE_DRIVE;
+    else throw std::runtime_error("알 수 없는 DriveState 문자열: " + str);
+}
+

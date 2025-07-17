@@ -215,15 +215,15 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
         std::cerr << "[ERROR] Python 제어 실패: " << e.what() << "\n";
     }
     // 현재 상태 로그 출력
-    switch (drive_state_) {
-        case DriveState::DRIVE:                  std::cout << "주행"; break;
-        case DriveState::WAIT_AFTER_CROSSWALK:   std::cout << "횡단보도 대기"; break;
-        case DriveState::STOP_AT_START_LINE:     std::cout << "출발선 정지"; break;
-        default:                                 break;
-    }
-    std::cout << " | cross_offset: " << cross_offset
-              << " | steering: " << steering_
-              << " | throttle: " << throttle_ << "\n";
+    // switch (drive_state_) {
+    //     case DriveState::DRIVE:                  std::cout << "주행"; break;
+    //     case DriveState::WAIT_AFTER_CROSSWALK:   std::cout << "횡단보도 대기"; break;
+    //     case DriveState::STOP_AT_START_LINE:     std::cout << "출발선 정지"; break;
+    //     default:                                 break;
+    // }
+    // std::cout << " | cross_offset: " << cross_offset
+    //           << " | steering: " << steering_
+    //           << " | throttle: " << throttle_ << "\n";
 }
 
 // computeSteering: 오프셋 기반 조향 계산 (비례 제어 + 범위 제한)

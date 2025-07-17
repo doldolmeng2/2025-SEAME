@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <vector>
+#include <nlohmann/json.hpp>
 
 // 전역 변수 선언
 extern int FRAME_WIDTH;
@@ -54,6 +56,17 @@ extern int GFT_MIN_CORNER_DISTANCE;
 extern float STEERING_OFFSET;
 extern float STEERING_OFFSET_2;
 extern int YELLOW_ROI_REMOVE_DELAY;
+
+enum class DriveState {
+    DRIVE,
+    WAIT_AFTER_CROSSWALK,
+    STOP_AT_START_LINE,
+    YELLOW_LINE_DRIVE
+};
+extern DriveState INITIAL_DRIVE_STATE;
+extern std::vector<std::string> DRIVE_STATES;
+
+DriveState parseDriveState(const std::string& str);
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

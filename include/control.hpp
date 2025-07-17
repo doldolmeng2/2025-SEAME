@@ -6,13 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <pybind11/embed.h>
-
-enum class DriveState {
-    DRIVE,
-    WAIT_AFTER_CROSSWALK,
-    STOP_AT_START_LINE,
-    YELLOW_LINE_DRIVE
-};
+#include "constants.hpp"
 
 class Controller {
 public:

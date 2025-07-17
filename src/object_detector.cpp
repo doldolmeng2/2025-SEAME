@@ -73,11 +73,15 @@ bool ObjectDetector::detectStopLine(const cv::Mat& grayscale, cv::Mat& vis_out, 
     int y2 = static_cast<int>(height * STOPLINE_DETECTION_Y2);
 
     cv::Mat roi = grayscale.rowRange(y1, y2);
-    cv::Mat white_mask = (roi == 255);
-
     int num_labels;
     cv::Mat labels, stats, centroids;
-    num_labels = cv::connectedComponentsWithStats(white_mask, labels, stats, centroids, 8);
+    if (WHITE_LINE_DRIVE){
+        cv::Mat white_mask = (roi == 255);
+        num_labels = cv::connectedComponentsWithStats(white_mask, labels, stats, centroids, 8);
+    } else {
+        cv::Mat yellow_mask = (roi == 255);
+        num_labels = cv::connectedComponentsWithStats(yellow_mask, labels, stats, centroids, 8);
+    }
 
     int roi_area = roi.rows * roi.cols;
     int max_area = 0, max_index = -1;

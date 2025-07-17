@@ -53,6 +53,8 @@ int STARTLINE_DETECTION_THRESHOLD;
 int GFT_MAX_CORNER_QUANTITY;
 float GFT_CORNER_QUALITY_LEVEL;
 int GFT_MIN_CORNER_DISTANCE;
+float STEERING_OFFSET;
+float STEERING_OFFSET_2;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -112,4 +114,6 @@ void load_constants(const std::string& path) {
     GFT_MAX_CORNER_QUANTITY = j["GFT_MAX_CORNER_QUANTITY"];
     GFT_CORNER_QUALITY_LEVEL = j["GFT_CORNER_QUALITY_LEVEL"];
     GFT_MIN_CORNER_DISTANCE = j["GFT_MIN_CORNER_DISTANCE"];
+    STEERING_OFFSET = j["STEERING_OFFSET"];
+    STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
 }

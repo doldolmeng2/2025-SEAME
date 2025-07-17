@@ -189,6 +189,10 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
                 ROI_REMOVE_LEFT = true;
                 WHITE_LINE_DRIVE = false;
                 // 노란 픽셀 감소 시 일반 주행으로 복귀
+                if (stop_line) {
+                    STEERING_OFFSET = STEERING_OFFSET_2;
+                }
+
                 if (yellow_pixel_count < YELLOW_PIXEL_THRESHOLD) {
                     drive_state_ = DriveState::DRIVE;
                     ROI_REMOVE_LEFT = false;
@@ -228,7 +232,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
 
 // computeSteering: 오프셋 기반 조향 계산 (비례 제어 + 범위 제한)
 float Controller::computeSteering(int offset) const {
-    return std::clamp(-0.25f + STEERING_KP * offset, -0.7f, 0.7f);
+    return std::clamp(STEERING_OFFSET + STEERING_KP * offset, -0.7f, 0.7f);
 }
 
 // computeThrottle: 현재 고정 스로틀 반환 (추후 속도 제어 로직 보완 가능)

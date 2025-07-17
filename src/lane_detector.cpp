@@ -34,12 +34,13 @@ std::vector<std::vector<int>> LaneDetector::findBlobs(const uchar* row_ptr, int 
         if (left_it->front() < mid) {
             result.push_back(*left_it);
         }
-        if (left_it != right_it && right_it->back() > mid) {
+        if (right_it->back() > mid) {
             result.push_back(*right_it);
         }
     }
     return result;
 }
+
 
 int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     if (frame.empty()) {

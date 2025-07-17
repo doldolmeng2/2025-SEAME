@@ -35,6 +35,7 @@ int YELLOW_PIXEL_THRESHOLD;
 int DEFAULT_LANE_GAP;
 float STOPLINE_DETECTION_Y1;
 float STOPLINE_DETECTION_Y2;
+float STOPLINE_DETECTION_THRESHOLD;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -76,4 +77,5 @@ void load_constants(const std::string& path) {
     DEFAULT_LANE_GAP = j["DEFAULT_LANE_GAP"];
     STOPLINE_DETECTION_Y1 = j["STOPLINE_DETECTION_Y1"];
     STOPLINE_DETECTION_Y2 = j["STOPLINE_DETECTION_Y2"];
+    STOPLINE_DETECTION_THRESHOLD = j["STOPLINE_DETECTION_THRESHOLD"];
 }

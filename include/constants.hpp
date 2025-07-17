@@ -33,6 +33,7 @@ extern int YELLOW_PIXEL_THRESHOLD;
 extern int DEFAULT_LANE_GAP;
 extern float STOPLINE_DETECTION_Y1;
 extern float STOPLINE_DETECTION_Y2;
+extern float STOPLINE_DETECTION_THRESHOLD;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

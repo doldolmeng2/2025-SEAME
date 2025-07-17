@@ -15,7 +15,8 @@ using namespace std::chrono;  // 시간 관련 유틸 사용
 bool crosswalk_flag = false;               // 횡단보도 감지 플래그 (한 번만 처리)
 bool crosswalk_ignore_stopline = false;    // 횡단보도 후 정지선 무시 여부
 steady_clock::time_point crosswalk_resume_time;  // 정지선 무시 기간 시작 시간 저장
-std::chrono::steady_clock::time_point yellow_mode_start_time_;
+steady_clock::time_point yellow_mode_start_time_;
+steady_clock::time_point wait_start_time_; // 횡단보도 감지된 시점
 
 // Python 객체(piracer, gamepad)를 감싸는 내부 구현 구조체
 struct __attribute__((visibility("hidden"))) Controller::Impl {
@@ -104,11 +105,38 @@ void Controller::startGamepadThread() {
 
                     //수동 모드로 전환될 때 상태 초기화
                     if (manual_mode_) {
-                        drive_state_ = DriveState::DRIVE;
-                        crosswalk_flag = false;
-                        crosswalk_ignore_stopline = false;
-                        ROI_REMOVE_LEFT = false;
-                        WHITE_LINE_DRIVE = true;
+                        drive_state_ = INITIAL_DRIVE_STATE;
+                        switch (INITIAL_DRIVE_STATE) {
+                            case DriveState::DRIVE:
+                                ROI_REMOVE_LEFT = false;
+                                WHITE_LINE_DRIVE = true;
+                                crosswalk_flag = false;
+                                crosswalk_ignore_stopline = false;
+                                break;
+                            case DriveState::YELLOW_LINE_DRIVE:
+                                ROI_REMOVE_LEFT = false; // 모드 시작 n초 후에 true로 바뀜. 처음에는 false임.
+                                WHITE_LINE_DRIVE = false;
+                                yellow_mode_start_time_ = steady_clock::now();
+                                crosswalk_flag = true;
+                                crosswalk_ignore_stopline = false;
+                                break;
+                            case DriveState::WAIT_AFTER_CROSSWALK:
+                                ROI_REMOVE_LEFT = false;
+                                WHITE_LINE_DRIVE = true;
+                                wait_start_time_ = steady_clock::now();
+                                crosswalk_flag = true;
+                                crosswalk_ignore_stopline = false; // 모드 시작 n초 후에 true로 바뀜. 처음에는 false임.
+                                break;
+                            case DriveState::STOP_AT_START_LINE:
+                                ROI_REMOVE_LEFT = false;
+                                WHITE_LINE_DRIVE = true;
+                                crosswalk_flag = true;
+                                crosswalk_ignore_stopline = false;
+                                break;
+                            default:
+                                std::cerr << "[WARN] 정의되지 않은 INITIAL_DRIVE_STATE\n";
+                                break;
+                        }
                         std::cout << "[INFO] 수동 모드 진입 -> 내부 상태 초기화 완료\n";
                     }
                 }

@@ -57,7 +57,7 @@ float STEERING_OFFSET;
 float STEERING_OFFSET_2;
 int YELLOW_ROI_REMOVE_DELAY;
 DriveState INITIAL_DRIVE_STATE;
-std::vector<std::string> DRIVE_STATES;
+std::vector<std::string> DRIVE_STATE_LIST;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -120,7 +120,7 @@ void load_constants(const std::string& path) {
     STEERING_OFFSET = j["STEERING_OFFSET"];
     STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
     YELLOW_ROI_REMOVE_DELAY = j["YELLOW_ROI_REMOVE_DELAY"];
-    DRIVE_STATES = j["DRIVE_STATES"].get<std::vector<std::string>>();
+    DRIVE_STATE_LIST = j["DRIVE_STATES"].get<std::vector<std::string>>();
     INITIAL_DRIVE_STATE = parseDriveState(j["INITIAL_DRIVE_STATE"]);
 }
 

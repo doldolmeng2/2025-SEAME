@@ -64,7 +64,7 @@ enum class DriveState {
     YELLOW_LINE_DRIVE
 };
 extern DriveState INITIAL_DRIVE_STATE;
-extern std::vector<std::string> DRIVE_STATES;
+extern std::vector<std::string> DRIVE_STATE_LIST;
 
 DriveState parseDriveState(const std::string& str);
 

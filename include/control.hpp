@@ -17,7 +17,7 @@ public:
 
 private:
     // ── 기존 멤버 ──
-    DriveState drive_state_;
+    DriveState drive_state_; // enum DriveState의 원소 drive_state_
     std::chrono::steady_clock::time_point wait_start_time_;
     float steering_;
     float throttle_;

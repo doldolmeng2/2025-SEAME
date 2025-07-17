@@ -3,6 +3,7 @@
 #include <iostream>
 #include <numeric>
 #include <cmath>
+#include <opencv2/opencv.hpp>
 
 LaneDetector::LaneDetector() {}
 
@@ -57,7 +58,8 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
         std::cerr << "[LaneDetector] 입력 프레임이 비어있습니다." << std::endl;
         return 0;
     }
-
+    cv::Mat frame
+    cv::Mat birdEye = warpBirdsEye(frame);
     cv::Mat hsv;
     cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
     std::vector<cv::Mat> channels;
@@ -76,10 +78,12 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     cv::Mat white_mask = (s < WHITE_S_MAX) & (v >= WHITE_V_MIN) & valid_mask;
     cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
 
-    // if (VIEWER) {
-    //     cv::imshow("roi_mask", roi_mask);
-    //     cv::waitKey(1);
-    // }
+    if (VIEWER) {
+        cv::imshow("yellow_mask", yellow_mask);
+        cv::imshow("birdEye", birdEye);
+        cv::waitKey(1);
+    }
+    
 
     vis_out = frame.clone();
     std::vector<int> target_rows = { static_cast<int>(height * Y_TARGET_HIGH), static_cast<int>(height * Y_TARGET_LOW) };
@@ -170,4 +174,32 @@ cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {
             0, 
             cv::FILLED);
     return mask;
+}
+
+cv::Mat warpBirdsEye(const cv::Mat& frame)
+{
+    int width  = frame.cols;
+    int height = frame.rows;
+    float cx   = width / 2.0f;
+
+    // 전역변수로부터 사다리꼴 꼭지점 반너비 사용
+    std::vector<cv::Point2f> srcPts = {
+        { cx - BIRD_EYES_HIGH, 0.0f       },  // top-left
+        { cx + BIRD_EYES_HIGH, 0.0f       },  // top-right
+        { cx + BIRD_EYES_LOW,  (float)height},  // bottom-right
+        { cx - BIRD_EYES_LOW,  (float)height}   // bottom-left
+    };
+
+    // 전체 화면 사각형
+    std::vector<cv::Point2f> dstPts = {
+        { 0.0f,        0.0f         },
+        { (float)width, 0.0f         },
+        { (float)width, (float)height},
+        { 0.0f,        (float)height}
+    };
+
+    cv::Mat M = cv::getPerspectiveTransform(srcPts, dstPts);
+    cv::Mat birdView;
+    cv::warpPerspective(frame, birdView, M, frame.size());
+    return birdView;
 }

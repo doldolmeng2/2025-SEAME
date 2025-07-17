@@ -54,6 +54,8 @@ float Y_TARGET_LOW;
 float WHITE_LINE_THROTTLE;
 float OUT_TIME;
 float OUT_OFFSET;
+float BIRD_EYES_HIGH;
+float BIRD_EYES_LOW;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -114,4 +116,6 @@ void load_constants(const std::string& path) {
     WHITE_LINE_THROTTLE = j["WHITE_LINE_THROTTLE"];
     OUT_TIME = j["OUT_TIME"];
     OUT_OFFSET = j["OUT_OFFSET"];
+    BIRD_EYES_HIGH = j["BIRD_EYES_HIGH"];
+    BIRD_EYES_LOW = j["BIRD_EYES_LOW"];
 }

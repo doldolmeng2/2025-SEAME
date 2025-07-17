@@ -53,6 +53,8 @@ extern float Y_TARGET_LOW;
 extern float WHITE_LINE_THROTTLE;
 extern float OUT_TIME;
 extern float OUT_OFFSET;
+extern float BIRD_EYES_HIGH;
+extern float BIRD_EYES_LOW;
 
 
 // 초기화 함수 선언

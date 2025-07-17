@@ -51,6 +51,8 @@
 
   "WHITE_LINE_THROTTLE": 0.005,
   "OUT_OFFSET": 0.05,
-  "OUT_TIME": 1.5
+  "OUT_TIME": 1.5,
   
+  "BIRD_EYES_HIGH":80,
+  "BIRD_EYES_LOW":180 
 }

@@ -63,6 +63,18 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
         int y_bot = height;  // 320x200이면 y_bot == 200
         float intersection_x = m * y_bot + b;
 
+        /* 교점 출력 코드 */
+        std::string txt = "ix: " + std::to_string(intersection_x);
+        int font_face   = cv::FONT_HERSHEY_SIMPLEX;
+        double font_sc  = 0.6;
+        int thickness   = 2;
+        int baseline    = 0;
+        // 텍스트 크기 계산
+        cv::Size ts = cv::getTextSize(txt, font_face, font_sc, thickness, &baseline);
+        // 화면 우측 위 (마진 10px)
+        cv::Point org(width - ts.width - 10, ts.height + 10);
+        cv::putText(vis_out, txt, org, font_face, font_sc, cv::Scalar(0, 0, 255), thickness);
+
         // 2) 목표선(TARGET_INTERSECTION_X)과의 차이 → 조향 에러
         //    (positive 이면 오른쪽으로, negative 이면 왼쪽으로 조향)
         float steer_value = intersection_x - static_cast<float>(TARGET_INTERSECTION_X);

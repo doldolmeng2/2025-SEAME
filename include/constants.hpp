@@ -34,6 +34,8 @@ extern int DEFAULT_LANE_GAP;
 extern float STOPLINE_DETECTION_Y1;
 extern float STOPLINE_DETECTION_Y2;
 extern float STOPLINE_DETECTION_THRESHOLD;
+extern float AVG_PARAM;
+extern float INTER_PARAM;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

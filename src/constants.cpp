@@ -36,6 +36,8 @@ int DEFAULT_LANE_GAP;
 float STOPLINE_DETECTION_Y1;
 float STOPLINE_DETECTION_Y2;
 float STOPLINE_DETECTION_THRESHOLD;
+float AVG_PARAM;
+float INTER_PARAM;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -78,4 +80,6 @@ void load_constants(const std::string& path) {
     STOPLINE_DETECTION_Y1 = j["STOPLINE_DETECTION_Y1"];
     STOPLINE_DETECTION_Y2 = j["STOPLINE_DETECTION_Y2"];
     STOPLINE_DETECTION_THRESHOLD = j["STOPLINE_DETECTION_THRESHOLD"];
+    AVG_PARAM = j["AVG_PARAM"];
+    INTER_PARAM = j["INTER_PARAM"];
 }

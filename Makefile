@@ -1,24 +1,47 @@
-# Makefile for auto_drive_project
+# ──────────────────────────────────────────────────
+# Project Makefile (faster, parallel, incremental)
+# ──────────────────────────────────────────────────
 
-CXX = ccache g++
-PYTHON_INCLUDE = -I/usr/include/python3.10 -I/home/orda/.local/lib/python3.10/site-packages/pybind11/include
-PYTHON_LIBS = -lpython3.10
-CXXFLAGS = -std=c++17 -Iinclude -I/usr/include $(PYTHON_INCLUDE) `pkg-config --cflags opencv4`
-LDFLAGS = `pkg-config --libs opencv4` -lrt -pthread $(PYTHON_LIBS)
+# 콤파일러 및 플래그
+CXX       := ccache g++
+CXXFLAGS  := -std=c++17 -Iinclude \
+              -I/usr/include/python3.10 \
+              `pkg-config --cflags opencv4` \
+              -MMD -MP               # 의존성 자동 생성
+LDFLAGS   := `pkg-config --libs opencv4` -lrt -pthread -lpython3.10
 
-SRC = \
-    src/main.cpp \
-    src/usb_cam.cpp \
-    src/video_recorder.cpp \
-    src/lane_detector.cpp \
-    src/object_detector.cpp \
-    src/control.cpp \
-    src/constants.cpp
+# 소스/객체 정의
+SRC_DIR   := src
+BUILD_DIR := build
+SRCS      := $(wildcard $(SRC_DIR)/*.cpp)
+OBJS      := $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
+DEPS      := $(OBJS:.o=.d)
 
-OUT = auto_drive
+# 출력 바이너리
+TARGET    := auto_drive
 
-all:
-	$(CXX) $(SRC) -o $(OUT) $(CXXFLAGS) $(LDFLAGS)
+# 병렬 빌드 기본 옵션 (CPU 코어 개수만큼)
+MAKEFLAGS += -j$(shell nproc)
 
+.PHONY: all clean
+
+all: $(TARGET)
+
+# 최종 링크
+$(TARGET): $(OBJS)
+	$(CXX) $^ -o $@ $(LDFLAGS)
+
+# 객체 파일 빌드
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# 빌드 폴더 생성
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# 클린업
 clean:
-	rm -f $(OUT)
+	rm -rf $(BUILD_DIR) $(TARGET) $(DEPS)
+
+# 의존성 자동 포함
+-include $(DEPS)

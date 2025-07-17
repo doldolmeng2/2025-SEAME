@@ -8,6 +8,8 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+using namespace Constants;
+
 bool USBCam::init() {
     std::string pipeline =
         "v4l2src device=/dev/video0 ! "

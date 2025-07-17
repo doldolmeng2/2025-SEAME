@@ -1,266 +1,261 @@
 // main.cpp
-#include <iostream> // 표준 입출력 스트림
-#include <thread> // 멀티스레드 구현을 위한 쓰레드 라이브러리
-#include <mutex> // 상호 배제(뮤텍스)
-#include <condition_variable> // 조건 변수
-#include <atomic> // 원자성 변수
-#include <memory> // 스마트 포인터
-#include <string> // 문자열 처리
-#include <csignal> // 시그널 처리
-#include <chrono> // 시간 측정 및 sleep
-#include <ctime> // 시간 변환
-#include <iomanip> // 입출력 포맷 조정
-#include <sstream> // 문자열 스트림 처리
+#include "usb_cam.hpp"
+#include "video_recorder.hpp"
+#include "lane_detector.hpp"
+#include "object_detector.hpp"
+#include "control.hpp"
+#include "constants.hpp"
 
-#include "usb_cam.hpp" // USB 카메라 래퍼 클래스
-#include "video_recorder.hpp" // 비디오 녹화 클래스
-#include "lane_detector.hpp" // 차선 검출 클래스
-#include "object_detector.hpp" // 객체 검출 클래스
-#include "control.hpp" // 조향 제어 클래스
-#include "constants.hpp" // 상수 정의 및 로드
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <csignal>
+#include <iostream>
+#include <iomanip>
+#include <chrono>
+#include <pybind11/embed.h>
 
-// 전역 변수 선언
-static std::mutex frame_mutex; // 프레임 공유 시 동기화용 뮤텍스
-static std::shared_ptr<cv::Mat> shared_frame = nullptr; // 최신 프레임 저장 포인터
+namespace py = pybind11;
+using namespace std::chrono_literals;
+using namespace Constants;
 
-static std::mutex lane_mutex; // 차선 오프셋 동기화용 뮤텍스
-static std::atomic<int> mean_center_offset{0}; // 차선 중심 오프셋 (원자 변수)
-std::atomic<int> yellow_pixel_count{0};  // lane_detector의 결과를 공유
+class AutoDriveSystem {
+public:
+    enum class Mode { DRIVE, RECORD, DRIVE_RECORD };
+    Mode currentMode{Mode::DRIVE};
 
-static std::mutex object_mutex; // 객체 검출 플래그 동기화용 뮤텍스
-static std::vector<bool> detections_flags(3, false); // 객체 검출 결과 플래그 (stop, cross, start)
+    AutoDriveSystem() {
+        signal(SIGINT, [](int){ running = false; });
+    }
 
-static std::condition_variable control_cv; // 제어 스레드 알림용 조건 변수
-static std::mutex control_mutex; // 제어 조건 변수용 뮤텍스
-static bool control_ready = false; // 제어 가능 상태 플래그
+    bool init(int argc, char** argv) {
+        static py::scoped_interpreter guard{}; // 파이썬 인터프리터 실행
+        try {
+            loadConstants("constants.json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] 상수 로드 실패: " << e.what() << "\n";
+            return false;
+        }
+        try {
+            py::object piracer_mod = py::module_::import("piracer");
+            piracer_ = piracer_mod.attr("PiRacerProPlatform")();
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] piracer import 실패: " << e.what() << "\n";
+            return false;
+        }
+        if (!parseMode(argc, argv)) return false;
+        if (!cam_.init())      return false;
+        if (needsRecording()) {
+            std::string fn = makeFilename("/home/orda/records/avis");
+            if (!recorder_.init(fn, FRAME_WIDTH, FRAME_HEIGHT, 30.0))
+                return false;
+        }
+        return true;
+    }
 
-static std::condition_variable first_frame_cv; // 첫 번째 프레임 대기용 조건 변수
-static bool first_frame_ready = false; // 첫 번째 프레임 수신 여부
-static std::atomic<bool> running{true}; // 프로그램 실행 상태 플래그
+    void run() {
+        startThreads();
+        joinThreads();
+        recorder_.release();
+        std::cout << "[INFO] 시스템 종료\n";
+    }
 
-// 실행 모드 열거형
-// - DRIVE       : 차선 및 객체 검출 후 주행 제어만 수행 (녹화하지 않음)
-// - RECORD      : 카메라 영상을 파일로 녹화만 수행 (주행 제어하지 않음)
-// - DRIVE_RECORD: 주행 제어와 영상 녹화를 동시에 수행
-enum class Mode { DRIVE, RECORD, DRIVE_RECORD };
-static Mode current_mode = Mode::DRIVE; // 기본 실행 모드는 DRIVE
+private:
+    void startThreads() {
+        cameraThread_ = std::thread(&AutoDriveSystem::cameraLoop, this);
+        if (isDriveMode()) {
+            laneThread_    = std::thread(&AutoDriveSystem::laneLoop, this);
+            objectThread_  = std::thread(&AutoDriveSystem::objectLoop, this);
+            controlThread_ = std::thread(&AutoDriveSystem::controlLoop, this);
+        }
+    }
 
-// SIGINT 시그널(CTRL+C) 처리 함수
-void signal_handler(int) {
-    running = false; // 프로그램 종료 플래그 설정
-    std::cout << "\n[INFO] 종료 시그널 감지됨. 프로그램 종료 중...\n";
-}
+    void joinThreads() {
+        cameraThread_.join();
+        if (laneThread_.joinable())    laneThread_.join();
+        if (objectThread_.joinable())  objectThread_.join();
+        if (controlThread_.joinable()) controlThread_.join();
+    }
 
-// 날짜/시간 기반 파일명 생성 함수
-std::string getTimestampedFilename(const std::string& base_dir) {
-    auto now = std::chrono::system_clock::now(); // 현재 시간
-    std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::tm* tm = std::localtime(&t); // 로컬 시간 변환
+    void cameraLoop() {
+        while (running) {
+            cv::Mat frame = cam_.getFrame();
+            if (frame.empty()) continue;
+            {
+                std::lock_guard lk(frameMutex);
+                sharedFrame = std::make_shared<cv::Mat>(frame);
+                if (!firstFrameArrived) {
+                    firstFrameArrived = true;
+                    firstFrameCv.notify_all();
+                }
+            }
+            if (needsRecording()) recorder_.write(frame);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
 
-    std::ostringstream oss;
-    oss << base_dir << "/output_"
-        << std::setw(2) << std::setfill('0') << tm->tm_mday  // 일
-        << std::setw(2) << std::setfill('0') << tm->tm_hour  // 시
-        << std::setw(2) << std::setfill('0') << tm->tm_min   // 분
-        << std::setw(2) << std::setfill('0') << tm->tm_sec   // 초
-        << ".avi";
-    return oss.str(); // 완성된 파일명 반환
-}
+    void laneLoop() {
+        waitFirstFrame();
+        while (running) {
+            auto frame = getSharedFrame();
+            if (!frame) continue;
+            cv::Mat vis;
+            int offset = laneDetector_.process(*frame, vis);
+            {
+                std::lock_guard lk(laneMutex);
+                laneOffset = offset;
+                yellowCount = laneDetector_.getYellowPixelCount();
+            }
+            notifyControl();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    void objectLoop() {
+        waitFirstFrame();
+        while (running) {
+            auto frame = getSharedFrame();
+            if (!frame) continue;
+            cv::Mat vis;
+            auto results = objectDetector_.detect(*frame, vis);
+            std::vector<bool> flags = {
+                results.stopline,
+                results.crosswalk,
+                results.startline
+            };
+            {
+                std::lock_guard lk(objectMutex);
+                objectFlags = flags;
+            }
+            notifyControl();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    void controlLoop() {
+        Controller ctrl;
+        waitFirstFrame();
+        while (running) {
+            std::unique_lock ul(controlMutex);
+            controlCv.wait(ul, [this]{ return controlReady; });
+            controlReady = false;
+
+            int offset, yellow;
+            std::vector<bool> flags;
+            {
+                std::lock_guard lk1(laneMutex);
+                offset = laneOffset;
+                yellow = yellowCount;
+            }
+            {
+                std::lock_guard lk2(objectMutex);
+                flags = objectFlags;
+            }
+            ul.unlock();
+
+            ctrl.update(flags[0], flags[1], flags[2], offset, yellow);
+
+            // ---- 여기서 파이썬 piracer에 명령! ----
+            piracer_.attr("set_steering")(ctrl.getSteering());
+            piracer_.attr("set_throttle")(ctrl.getThrottle());
+            // -------------------------------------
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    void waitFirstFrame() {
+        std::unique_lock ul(frameMutex);
+        firstFrameCv.wait(ul, [this]{ return firstFrameArrived; });
+    }
+
+    void notifyControl() {
+        {
+            std::lock_guard lk(controlMutex);
+            controlReady = true;
+        }
+        controlCv.notify_one();
+    }
+
+    bool parseMode(int argc, char** argv) {
+        if (argc < 2) {
+            std::cerr<<"[ERROR] 모드 인자 필요 (d, r, dr)\n";
+            return false;
+        }
+        std::string m{argv[1]};
+        if      (m=="d")  currentMode = Mode::DRIVE;
+        else if (m=="r")  currentMode = Mode::RECORD;
+        else if (m=="dr") currentMode = Mode::DRIVE_RECORD;
+        else {
+            std::cerr<<"[ERROR] 잘못된 모드: "<<m<<"\n";
+            return false;
+        }
+        std::cout<<"[INFO] 모드: "<<m<<"\n";
+        return true;
+    }
+
+    bool isDriveMode() const {
+        return currentMode == Mode::DRIVE ||
+               currentMode == Mode::DRIVE_RECORD;
+    }
+    bool needsRecording() const {
+        return currentMode == Mode::RECORD ||
+               currentMode == Mode::DRIVE_RECORD;
+    }
+
+    std::shared_ptr<cv::Mat> getSharedFrame() {
+        std::lock_guard lk(frameMutex);
+        return sharedFrame;
+    }
+
+    std::string makeFilename(const std::string& base) {
+        auto now = std::chrono::system_clock::now();
+        auto t   = std::chrono::system_clock::to_time_t(now);
+        std::tm tm{};
+        localtime_r(&t, &tm);
+        std::ostringstream ss;
+        ss << base << "/out_"
+           << std::setw(2) << std::setfill('0') << tm.tm_mday
+           << std::setw(2) << tm.tm_hour
+           << std::setw(2) << tm.tm_min
+           << std::setw(2) << tm.tm_sec
+           << ".avi";
+        return ss.str();
+    }
+
+    // ---- 멤버 변수 ----
+    USBCam         cam_;
+    VideoRecorder  recorder_;
+    LaneDetector   laneDetector_;
+    ObjectDetector objectDetector_;
+
+    std::thread             cameraThread_, laneThread_, objectThread_, controlThread_;
+    static inline std::atomic<bool> running{true};
+
+    std::mutex                    frameMutex;
+    std::condition_variable       firstFrameCv;
+    bool                          firstFrameArrived{false};
+    std::shared_ptr<cv::Mat>      sharedFrame;
+
+    std::mutex                    laneMutex;
+    int                           laneOffset{0};
+    int                           yellowCount{0};
+
+    std::mutex                    objectMutex;
+    std::vector<bool>             objectFlags = std::vector<bool>(3, false);
+
+    std::mutex                    controlMutex;
+    std::condition_variable       controlCv;
+    bool                          controlReady{false};
+
+    // ---- 파이썬 piracer 객체 ----
+    py::object piracer_;
+};
 
 int main(int argc, char** argv) {
-    // 상수 파일 로드
-    try {
-        load_constants("constants.json"); // constants.json -> constants.hpp
-        std::cout << "Steering KP: " << STEERING_KP << "\n"; // 로드된 상수 출력
-        std::cout << "Steering KI: " << STEERING_KI << "\n";
-        std::cout << "Steering KD: " << STEERING_KD << "\n";
-    } catch (const std::exception& e) {
-        std::cerr << "[ERROR] 상수 로드 실패: " << e.what() << std::endl;
-        return 1;   
-    }
-
-    signal(SIGINT, signal_handler); // SIGINT 시그널 핸들러 등록
-
-    // 실행 모드 파싱 (d, r, dr)
-    if (argc < 2) {
-        std::cerr << "[ERROR] 실행 인자를 지정해주세요: d, r, dr 중 하나\n";
-        return 1;
-    }
-    std::string mode_arg = argv[1]; // 명령줄 인자
-    if (mode_arg == "d") {
-        current_mode = Mode::DRIVE;
-    } else if (mode_arg == "r") {
-        current_mode = Mode::RECORD;
-    } else if (mode_arg == "dr") {
-        current_mode = Mode::DRIVE_RECORD;
-    } else {
-        std::cerr << "[ERROR] 잘못된 모드입니다. d, r, dr 중 하나를 선택해주세요.\n";
-        return 1;
-    }
-    std::cout << "[INFO] 선택된 모드: " << mode_arg << "\n";
-
-    // 카메라 초기화
-    USBCam cam;
-    if (!cam.init()) {
-        std::cerr << "[ERROR] 카메라 초기화 실패\n";
-        return 1;
-    }
-
-    // 비디오 녹화 초기화 (레코드 또는 DRIVE_RECORD 모드)
-    VideoRecorder recorder;
-    if (current_mode == Mode::RECORD || current_mode == Mode::DRIVE_RECORD) {
-        std::string filename = getTimestampedFilename("/home/orda/records/avis");
-        if (!recorder.init(filename, FRAME_WIDTH, FRAME_HEIGHT, 30.0)) {
-            std::cerr << "[ERROR] 비디오 저장 초기화 실패\n";
-            return 1;
-        }
-    }
-
-    // 카메라 캡처 스레드 (모든 모드에서 실행)
-    std::thread camera_thread([&]() {
-        while (running.load()) {
-            cv::Mat frame = cam.getFrame(); // 프레임 읽기
-            if (frame.empty()) continue; // 유효 프레임 아니면 스킵
-
-            // 최신 프레임 공유
-            auto ptr = std::make_shared<cv::Mat>(frame);
-            {
-                std::lock_guard<std::mutex> lock(frame_mutex);
-                shared_frame = ptr;
-                if (!first_frame_ready) {
-                    first_frame_ready = true;
-                    first_frame_cv.notify_all(); // 첫 프레임 수신 알림
-                }
-            }
-
-            // RECORD, DRIVE_RECORD 모드에서만 녹화 수행
-            if (current_mode == Mode::RECORD || current_mode == Mode::DRIVE_RECORD) {
-                recorder.write(frame); // 녹화
-            }
-
-            // VIEWER 모드 화면 출력 및 ESC키 종료
-            if (VIEWER) {
-                // cv::imshow("Live", frame);
-                if (cv::waitKey(1) == 27) {
-                    running = false;
-                }
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // CPU 과부하 방지
-        }
-    });
-
-    // 첫 번째 프레임 수신 대기
-    {
-        std::unique_lock<std::mutex> lock(frame_mutex);
-        first_frame_cv.wait(lock, [] { return first_frame_ready; });
-    }
-
-    // DRIVE, DRIVE_RECORD 모드에서만 실행할 스레드
-    std::thread lane_thread;
-    std::thread object_thread;
-    std::thread control_thread;
-    if (current_mode == Mode::DRIVE || current_mode == Mode::DRIVE_RECORD) {
-        // 차선 검출 스레드
-        lane_thread = std::thread([&]() {
-            LaneDetector lanedetector;
-            while (running.load()) {
-                std::shared_ptr<cv::Mat> frame;
-                {
-                    std::lock_guard<std::mutex> lock(frame_mutex);
-                    frame = shared_frame;
-                }
-                if (frame && !frame->empty()) {
-                    cv::Mat vis_out;
-                    int offset = lanedetector.process(*frame, vis_out); // 차선 오프셋 계산
-                    yellow_pixel_count = lanedetector.getYellowPixelCount();
-                    {
-                        std::lock_guard<std::mutex> lock(lane_mutex);
-                        mean_center_offset = offset; // 전역 오프셋 갱신
-                    }
-                    {
-                        std::lock_guard<std::mutex> lock(control_mutex);
-                        control_ready = true;
-                        control_cv.notify_one(); // 제어 스레드 실행 알림
-                    }
-                    if (VIEWER) {
-                        cv::imshow("Lane", vis_out);
-                        if (cv::waitKey(1) == 27) running = false;
-                    }
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-        });
-
-        // 객체 검출 스레드
-        object_thread = std::thread([&]() {
-            ObjectDetector detector;
-            while (running.load()) {
-                std::shared_ptr<cv::Mat> frame;
-                {
-                    std::lock_guard<std::mutex> lock(frame_mutex);
-                    frame = shared_frame;
-                }
-                if (frame && !frame->empty()) {
-                    cv::Mat vis_out;
-                    std::vector<bool> flags;
-                    detector.process(*frame, vis_out, flags); // 객체 검출
-                    {
-                        std::lock_guard<std::mutex> lock(object_mutex);
-                        detections_flags = flags; // 검출 결과 저장
-                    }
-                    {
-                        std::lock_guard<std::mutex> lock(control_mutex);
-                        control_ready = true;
-                        control_cv.notify_one(); // 제어 스레드 실행 알림
-                    }
-                    if (VIEWER) {
-                        cv::imshow("Objects", vis_out);
-                        if (cv::waitKey(1) == 27) running = false;
-                    }
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-        });
-
-        // 조향 제어 스레드
-        control_thread = std::thread([&]() {
-            Controller controller;
-            while (running.load()) {
-                std::unique_lock<std::mutex> lock(control_mutex);
-                control_cv.wait(lock, [] { return control_ready; }); // 알림 대기
-                control_ready = false;
-                lock.unlock();
-
-                // 최근 검출 결과 가져오기
-                bool stop = false, cross = false, start = false;
-                int offset = 0;
-                {
-                    std::lock_guard<std::mutex> lock(lane_mutex);
-                    offset = mean_center_offset;
-                }
-                {
-                    std::lock_guard<std::mutex> lock(object_mutex);
-                    if (detections_flags.size() > 0) stop = detections_flags[0];
-                    if (detections_flags.size() > 1) cross = detections_flags[1];
-                    if (detections_flags.size() > 2) start = detections_flags[2];
-                }
-                int yellow_count = yellow_pixel_count.load();
-		            controller.update(stop, cross, start, offset, yellow_count);
-                std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 제어 주기 조절
-            }
-        });
-    }
-
-    // 스레드 종료 대기
-    camera_thread.join();
-    if (lane_thread.joinable()) lane_thread.join();
-    if (object_thread.joinable()) object_thread.join();
-    if (control_thread.joinable()) control_thread.join();
-
-    // 비디오 녹화 자원 해제
-    recorder.release();
-
-    std::cout << "[INFO] 프로그램 종료\n";
+    AutoDriveSystem system;
+    if (!system.init(argc, argv)) return 1;
+    system.run();
     return 0;
 }

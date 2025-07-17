@@ -1,48 +1,47 @@
-// control.hpp
-#ifndef CONTROL_HPP
-#define CONTROL_HPP
-
-#include <thread>
-#include <atomic>
+#pragma once
 #include <chrono>
-#include <pybind11/embed.h>
+#include "constants.hpp"
 
-enum class DriveState {
-    DRIVE,
-    WAIT_AFTER_CROSSWALK,
-    STOP_AT_START_LINE,
-    YELLOW_LINE_DRIVE
+// (1) enum class DrivePhase는 클래스 바깥에!
+enum class DrivePhase {
+    START,
+    CENTRE_WHITE,
+    STOP_CROSSWALK,
+    RIGHT_WHITE,
+    CENTRE_YELLOW,
+    LEFT_YELLOW,
+    RIGHT_WHITE_AFTER,
+    FINISH
 };
 
 class Controller {
 public:
     Controller();
-    ~Controller();
+    ~Controller() = default;
 
-    void update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count);
+    void update(bool stopLine, bool crosswalk, bool startLine, int laneOffset, int yellowCount);
+    void setManualMode(bool manual);
+    float getSteering() const { return steering_; }
+    float getThrottle() const { return throttle_; }
 
 private:
-    // ── 기존 멤버 ──
-    DriveState drive_state_;
-    std::chrono::steady_clock::time_point wait_start_time_;
+    float computeSteering(int error);
+    float computeThrottle(int error);
+    float computeThrottle(int error, float baseThrottle);
+    void handleAutomatic(bool stopLine, bool crosswalk, bool startLine, int laneOffset, int yellowCount);
+    void transitionTo(DrivePhase newPhase);
+    void setMode(Constants::FollowLaneMode mode);
+
+    DrivePhase phase_;
+    std::chrono::steady_clock::time_point phaseStartTime_;
+    bool firstStopPassed_;
+    bool manualMode_;
+
+    float prevError_;
+    float integral_;
     float steering_;
     float throttle_;
-    bool last_manual_mode_;
-
-    float computeSteering(int offset) const;
-    float computeThrottle(int offset) const;
-
-    struct Impl;
-    Impl* impl_;
-
-    // ── 추가할 멤버 ──
-    std::atomic<bool>   manual_mode_{false};
-    std::atomic<float>  manual_throttle_{0.0f};
-    std::atomic<float>  manual_steering_{0.0f};
-
-    std::atomic<bool>   gamepad_running_{false};
-    std::thread         gamepad_thread_;
-    void startGamepadThread();
+    float kp_, ki_, kd_, throttle_kp_;
+    float baseSteering_;
+    float maxError_;
 };
-
-#endif // CONTROL_HPP

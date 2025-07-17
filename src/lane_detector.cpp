@@ -29,9 +29,14 @@ std::vector<std::vector<int>> LaneDetector::findBlobs(const uchar* row_ptr, int 
         auto right_it = std::max_element(blobs.begin(), blobs.end(), [](const auto& a, const auto& b) {
             return a.back() < b.back();
         });
-        result.push_back(*left_it);
-        if (left_it != right_it)
+        int mid = width / 2;
+        // left_it이 화면 오른쪽에 있거나 right_it이 화면 왼쪽에 있으면 제외
+        if (left_it->front() < mid) {
+            result.push_back(*left_it);
+        }
+        if (left_it != right_it && right_it->back() > mid) {
             result.push_back(*right_it);
+        }
     }
     return result;
 }
@@ -61,12 +66,12 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
 
     vis_out = frame.clone();
-    std::vector<int> target_rows = { static_cast<int>(height * 0.4f), static_cast<int>(height * 0.6f) };
+    std::vector<int> target_rows = { static_cast<int>(height * 0.35f), static_cast<int>(height * 0.65f) };
     std::vector<cv::Point> lane_points;
 
     for (int y : target_rows) {
         const uchar* row_ptr = (WHITE_LINE_DRIVE ? white_mask.ptr<uchar>(y) : yellow_mask.ptr<uchar>(y));
-        auto blobs = findBlobs(row_ptr, width, MIN_BLOB_SIZE);
+        auto blobs = findBlobs(row_ptr, width);
 
         if (blobs.size() >= 2) {
             int x1 = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
@@ -78,7 +83,9 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
             cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 255), -1);
         } else if (blobs.size() == 1) {
             int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
-            int lane_gap = DEFAULT_LANE_GAP;
+            // 원근감 반영한 동적 차간 간격
+            float ratio = static_cast<float>(y) / static_cast<float>(height);
+            int lane_gap = static_cast<int>(DEFAULT_LANE_GAP * ratio);
             int x_other = (x < center_x) ? x + lane_gap : x - lane_gap;
             lane_points.emplace_back(x, y);
             lane_points.emplace_back(x_other, y);

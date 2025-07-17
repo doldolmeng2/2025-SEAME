@@ -31,7 +31,7 @@ Controller::Controller()
       manual_mode_(true),                // 초기 모드를 수동으로 설정
       manual_throttle_(0.0f),            // 수동 입력용 스로틀
       manual_steering_(0.0f),            // 수동 입력용 스티어링
-      gamepad_running_(false)            // 게임패드 스레드 실행 플래그 초기화
+      gamepad_running_(false),           // 게임패드 스레드 실행 플래그 초기화
       last_manual_mode_(true)            // 자동 -> 수동 변경시 리셋
 
 {

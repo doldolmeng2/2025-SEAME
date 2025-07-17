@@ -72,7 +72,7 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     // }
 
     vis_out = frame.clone();
-    std::vector<int> target_rows = { static_cast<int>(height * 0.35f), static_cast<int>(height * 0.65f) };
+    std::vector<int> target_rows = { static_cast<int>(height * Y_TARGET_HIGH), static_cast<int>(height * Y_TARGET_LOW) };
     std::vector<cv::Point> lane_points;
 
     for (int y : target_rows) {
@@ -85,8 +85,8 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
             if (x1 > x2) std::swap(x1, x2);
             lane_points.emplace_back(x1, y);
             lane_points.emplace_back(x2, y);
-            cv::circle(vis_out, cv::Point(x1, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 255), -1);
+            cv::circle(vis_out, cv::Point(x1, y), 3, cv::Scalar(0, 255, 0), -1);
+            cv::circle(vis_out, cv::Point(x2, y), 3, cv::Scalar(0, 255, 0), -1);
         } else if (blobs.size() == 1) {
             int x = std::accumulate(blobs[0].begin(), blobs[0].end(), 0) / blobs[0].size();
             // 원근감 반영한 동적 차간 간격
@@ -95,8 +95,8 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
             int x_other = (x < center_x) ? x + lane_gap : x - lane_gap;
             lane_points.emplace_back(x, y);
             lane_points.emplace_back(x_other, y);
-            cv::circle(vis_out, cv::Point(x, y), 3, cv::Scalar(0, 255, 255), -1);
-            cv::circle(vis_out, cv::Point(x_other, y), 3, cv::Scalar(0, 255, 255), -1);
+            cv::circle(vis_out, cv::Point(x, y), 3, cv::Scalar(0, 255, 0), -1);
+            cv::circle(vis_out, cv::Point(x_other, y), 3, cv::Scalar(0, 255, 127), -1);
         } else {
             lane_points.emplace_back(center_x - 60, y);
             lane_points.emplace_back(center_x + 60, y);

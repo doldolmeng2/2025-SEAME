@@ -130,7 +130,8 @@ void Controller::startGamepadThread() {
 // start_line: 출발선 감지 여부
 // cross_offset: 차선 중심 대비 오프셋
 // yellow_pixel_count: 노란색 차선 픽셀 수
-void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count) {
+void Controller::update(bool stop_line, bool crosswalk, bool start_line,
+     int cross_offset, int yellow_pixel_count) {
     py::gil_scoped_acquire acquire; // Python 호출 전 GIL 획득
 
     // std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";

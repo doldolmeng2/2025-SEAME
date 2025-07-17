@@ -55,6 +55,8 @@ float GFT_CORNER_QUALITY_LEVEL;
 int GFT_MIN_CORNER_DISTANCE;
 float STEERING_OFFSET;
 float STEERING_OFFSET_2;
+float Y_TARGET_HIGH;
+float Y_TARGET_LOW;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -116,4 +118,6 @@ void load_constants(const std::string& path) {
     GFT_MIN_CORNER_DISTANCE = j["GFT_MIN_CORNER_DISTANCE"];
     STEERING_OFFSET = j["STEERING_OFFSET"];
     STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
+    Y_TARGET_HIGH = j["Y_TARGET_HIGH"];
+    Y_TARGET_LOW = j["Y_TARGET_LOW"];
 }

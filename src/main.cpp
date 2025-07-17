@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
                     int offset = lanedetector.process(*frame, vis_out); // 차선 오프셋 계산
                     auto end = std::chrono::high_resolution_clock::now();
                     int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-                    std::cout << "[DEBUG] lane_detector.process 수행 시간: " << elapsed_ms << " ms" << std::endl; // 차선 오프셋 계산
+                    // std::cout << "[DEBUG] lane_detector.process 수행 시간: " << elapsed_ms << " ms" << std::endl; // 차선 오프셋 계산
                     yellow_pixel_count = lanedetector.getYellowPixelCount();
                     {
                         std::lock_guard<std::mutex> lock(lane_mutex);

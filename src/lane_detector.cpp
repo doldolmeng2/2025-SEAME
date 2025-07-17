@@ -58,7 +58,6 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
         std::cerr << "[LaneDetector] 입력 프레임이 비어있습니다." << std::endl;
         return 0;
     }
-    cv::Mat frame
     cv::Mat birdEye = warpBirdsEye(frame);
     cv::Mat hsv;
     cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
@@ -176,7 +175,7 @@ cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {
     return mask;
 }
 
-cv::Mat warpBirdsEye(const cv::Mat& frame)
+cv::Mat LaneDetector::warpBirdsEye(const cv::Mat& frame)
 {
     int width  = frame.cols;
     int height = frame.rows;

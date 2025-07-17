@@ -133,7 +133,7 @@ void Controller::startGamepadThread() {
 void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count) {
     py::gil_scoped_acquire acquire; // Python 호출 전 GIL 획득
 
-    std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
+    // std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
 
     try {
         if (manual_mode_) {

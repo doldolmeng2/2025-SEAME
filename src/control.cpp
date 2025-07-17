@@ -188,7 +188,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     catch (const std::exception& e) {
         std::cerr << "[ERROR] Python 제어 실패: " << e.what() << "\n";
     }
-
+}
 //     // 상태 출력
 //     switch (drive_state_) {
 //         case DriveState::DRIVE: std::cout << "주행"; break;

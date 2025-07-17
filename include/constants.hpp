@@ -17,12 +17,6 @@ extern float THROTTLE_KP;
 extern float MAX_THROTTLE;
 extern float BASE_THROTTLE;
 extern int WAIT_SECONDS;
-extern int RED_H_MIN1;
-extern int RED_H_MIN2;
-extern int RED_H_MAX1;
-extern int RED_H_MAX2;
-extern int RED_S_MIN;
-extern int RED_V_MIN;
 extern int Y_TOP;
 extern int LONG_HALF;
 extern int SHORT_HALF;
@@ -30,6 +24,12 @@ extern bool ROI_REMOVE_LEFT;
 extern int ROI_REMOVE_LEFT_X_THRESHOLD;
 extern bool WHITE_LINE_DRIVE;
 extern int YELLOW_PIXEL_THRESHOLD;
+extern int NUM_DIVISIONS;
+extern int TARGET_INTERSECTION_X;
+extern float CURVE_RMSE_THRESHOLD;
+extern float FORCE_STEER_RIGHT;
+extern float STRAIGHT_KP;
+extern float CURVE_KP;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

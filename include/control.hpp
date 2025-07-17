@@ -27,6 +27,7 @@ private:
     std::chrono::steady_clock::time_point wait_start_time_;
     float steering_;
     float throttle_;
+    bool last_manual_mode_;
 
     float computeSteering(int offset) const;
     float computeThrottle(int offset) const;

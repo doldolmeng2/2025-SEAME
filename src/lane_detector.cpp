@@ -68,7 +68,7 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
 
     for (int y : target_rows) {
         const uchar* row_ptr = (WHITE_LINE_DRIVE ? white_mask.ptr<uchar>(y) : yellow_mask.ptr<uchar>(y));
-        auto blobs = findBlobs(row_ptr, width);
+        auto blobs = findBlobs(row_ptr, width, MIN_BLOB_SIZE); // min_blob_size 인자 추가
 
         if (blobs.size() >= 2) {
             // 왼쪽, 오른쪽 차선 블롭의 평균 x 좌표 계산

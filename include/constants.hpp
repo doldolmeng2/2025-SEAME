@@ -36,6 +36,13 @@ extern float STOPLINE_DETECTION_Y2;
 extern float STOPLINE_DETECTION_THRESHOLD;
 extern float AVG_PARAM;
 extern float INTER_PARAM;
+extern float CROSSWALK_DETECTION_X1;
+extern float CROSSWALK_DETECTION_X2;
+extern float CROSSWALK_DETECTION_Y1;
+extern float CROSSWALK_DETECTION_Y2;
+extern int CROSSWALK_DETECTION_RECT_HEIGHT_THRESHOLD;
+extern int CROSSWALK_DETECTION_RECT_WIDTH_THRESHOLD;
+extern int CROSSWALK_DETECTION_RECT_COUNT_THRESHOLD;
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

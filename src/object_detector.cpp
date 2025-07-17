@@ -129,10 +129,10 @@ bool ObjectDetector::detectStopLine(const cv::Mat& grayscale, cv::Mat& vis_out, 
 }
 
 bool ObjectDetector::detectCrosswalk(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width) {
-    int y1 = static_cast<int>(height * 0.4);
-    int y2 = static_cast<int>(height * 0.6);
-    int x1 = static_cast<int>(width * 0.2);
-    int x2 = static_cast<int>(width * 0.8);
+    int y1 = static_cast<int>(height * CROSSWALK_DETECTION_Y1);
+    int y2 = static_cast<int>(height * CROSSWALK_DETECTION_Y2);
+    int x1 = static_cast<int>(width * CROSSWALK_DETECTION_X1);
+    int x2 = static_cast<int>(width * CROSSWALK_DETECTION_X2);
 
     cv::Mat roi = grayscale(cv::Range(y1, y2), cv::Range(x1, x2));
     std::vector<std::vector<cv::Point>> contours;
@@ -141,13 +141,13 @@ bool ObjectDetector::detectCrosswalk(const cv::Mat& grayscale, cv::Mat& vis_out,
     int count = 0;
     for (const auto& cnt : contours) {
         cv::Rect rect = cv::boundingRect(cnt);
-        if (rect.height > 20 && rect.width < 80) {
+        if (rect.height > CROSSWALK_DETECTION_RECT_HEIGHT_THRESHOLD && rect.width < CROSSWALK_DETECTION_RECT_WIDTH_THRESHOLD) {
             ++count;
             cv::rectangle(vis_out, rect + cv::Point(x1, y1), cv::Scalar(0, 255, 0), 1);
         }
     }
 
-    if (count >= 3) {
+    if (count >= CROSSWALK_DETECTION_RECT_COUNT_THRESHOLD) {
         cv::putText(vis_out, "Crosswalk", cv::Point(x1 + 10, y1 - 10),
                     cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
         cv::rectangle(vis_out, cv::Rect(x1, y1, x2 - x1, y2 - y1), cv::Scalar(0, 255, 0), 2);

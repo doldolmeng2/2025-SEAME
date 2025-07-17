@@ -14,15 +14,10 @@ extern int YELLOW_H_MAX;
 extern bool VIEWER;
 extern float STEERING_KP;
 extern float THROTTLE_KP;
+
 extern float MAX_THROTTLE;
 extern float BASE_THROTTLE;
 extern int WAIT_SECONDS;
-extern int RED_H_MIN1;
-extern int RED_H_MIN2;
-extern int RED_H_MAX1;
-extern int RED_H_MAX2;
-extern int RED_S_MIN;
-extern int RED_V_MIN;
 extern int Y_TOP;
 extern int LONG_HALF;
 extern int SHORT_HALF;
@@ -55,6 +50,10 @@ extern float STEERING_OFFSET;
 extern float STEERING_OFFSET_2;
 extern float Y_TARGET_HIGH;
 extern float Y_TARGET_LOW;
+extern float WHITE_LINE_THROTTLE;
+extern float OUT_TIME;
+extern float OUT_OFFSET;
+
 
 // 초기화 함수 선언
 void load_constants(const std::string& path = "../constants.json");

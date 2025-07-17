@@ -19,12 +19,6 @@ float THROTTLE_KP;
 float MAX_THROTTLE;
 float BASE_THROTTLE;
 int WAIT_SECONDS;
-int RED_H_MIN1;
-int RED_H_MIN2;
-int RED_H_MAX1;
-int RED_H_MAX2;
-int RED_S_MIN;
-int RED_V_MIN;
 int Y_TOP;
 int LONG_HALF;
 int SHORT_HALF;
@@ -57,6 +51,9 @@ float STEERING_OFFSET;
 float STEERING_OFFSET_2;
 float Y_TARGET_HIGH;
 float Y_TARGET_LOW;
+float WHITE_LINE_THROTTLE;
+float OUT_TIME;
+float OUT_OFFSET;
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -82,12 +79,6 @@ void load_constants(const std::string& path) {
     MAX_THROTTLE = j["MAX_THROTTLE"];
     BASE_THROTTLE = j["BASE_THROTTLE"];
     WAIT_SECONDS = j["WAIT_SECONDS"];
-    RED_H_MIN1= j["RED_H_MIN1"];
-    RED_H_MIN2= j["RED_H_MIN2"];
-    RED_H_MAX1= j["RED_H_MAX1"];
-    RED_H_MAX2= j["RED_H_MAX2"];
-    RED_S_MIN= j["RED_S_MIN"];
-    RED_V_MIN= j["RED_V_MIN"];
     Y_TOP= j["Y_TOP"];
     LONG_HALF= j["LONG_HALF"];
     SHORT_HALF= j["SHORT_HALF"];
@@ -120,4 +111,7 @@ void load_constants(const std::string& path) {
     STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
     Y_TARGET_HIGH = j["Y_TARGET_HIGH"];
     Y_TARGET_LOW = j["Y_TARGET_LOW"];
+    WHITE_LINE_THROTTLE = j["WHITE_LINE_THROTTLE"];
+    OUT_TIME = j["OUT_TIME"];
+    OUT_OFFSET = j["OUT_OFFSET"];
 }

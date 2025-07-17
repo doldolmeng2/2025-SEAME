@@ -21,24 +21,34 @@ std::vector<std::vector<int>> LaneDetector::findBlobs(const uchar* row_ptr, int 
     }
 
     // 가장 왼쪽 차선과 가장 오른쪽 차선 블롭 선택
-    std::vector<std::vector<int>> result;
-    if (!blobs.empty()) {
-        auto left_it = std::min_element(blobs.begin(), blobs.end(), [](const auto& a, const auto& b) {
-            return a.front() < b.front();
-        });
-        auto right_it = std::max_element(blobs.begin(), blobs.end(), [](const auto& a, const auto& b) {
-            return a.back() < b.back();
-        });
+        std::vector<std::vector<int>> result;
         int mid = width / 2;
-        // left_it이 화면 오른쪽에 있거나 right_it이 화면 왼쪽에 있으면 제외
-        if (left_it->front() < mid) {
-            result.push_back(*left_it);
+        // 왼쪽/오른쪽 블롭만 따로 모으기
+        std::vector<std::vector<int>> left_blobs, right_blobs;
+        for (auto& b : blobs) {
+            if (b.front() < mid)  left_blobs.push_back(b);
+            if (b.back()  > mid)  right_blobs.push_back(b);
         }
-        if (right_it->back() > mid) {
-            result.push_back(*right_it);
+
+        // 왼쪽 화면에서 가장 왼쪽 블롭
+        if (!left_blobs.empty()) {
+            auto it = std::min_element(
+                left_blobs.begin(), left_blobs.end(),
+                [](auto& a, auto& b){ return a.front() < b.front(); }
+            );
+            result.push_back(*it);
         }
-    }
-    return result;
+
+        // 오른쪽 화면에서 가장 오른쪽 블롭
+        if (!right_blobs.empty()) {
+            auto it = std::max_element(
+                right_blobs.begin(), right_blobs.end(),
+                [](auto& a, auto& b){ return a.back() < b.back(); }
+            );
+            result.push_back(*it);
+        }
+
+        return result;
 }
 
 

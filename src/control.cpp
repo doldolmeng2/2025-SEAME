@@ -131,9 +131,11 @@ void Controller::startGamepadThread() {
 // cross_offset: 차선 중심 대비 오프셋
 // yellow_pixel_count: 노란색 차선 픽셀 수
 void Controller::update(bool stop_line, bool crosswalk, bool start_line,
-     int cross_offset, int yellow_pixel_count) {
+    int cross_offset, int yellow_pixel_count) {
     py::gil_scoped_acquire acquire; // Python 호출 전 GIL 획득
-
+    // 타이머 변수: stop_line 최초 발생 시점 기록 및 활성화 유지
+    static bool stopline_timer_active = false;
+    static steady_clock::time_point stopline_start;
     // std::cout << "[제어 출력] 모드: " << (manual_mode_ ? "수동" : "자동") << " | 상태: ";
 
     try {
@@ -186,14 +188,24 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line,
                 // 정지 상태: throttle_ = 0 로 설정됨
             }
             else if (drive_state_ == DriveState::YELLOW_LINE_DRIVE) {
+                auto now = steady_clock::now();
                 // 노란 차선 주행 상태: 좌측 ROI 제거, 흰색 주행 비활성화
                 ROI_REMOVE_LEFT = true;
                 WHITE_LINE_DRIVE = false;
-                // 노란 픽셀 감소 시 일반 주행으로 복귀
-                if (stop_line) {
-                    STEERING_OFFSET = STEERING_OFFSET_2;
+                // stop_line 한 번 발생 시 타이머 시작
+                if (stop_line && !stopline_timer_active) {
+                    stopline_timer_active = true;
+                    stopline_start = now;
                 }
-
+                // 타이머 활성화 중일 때 OUT_TIME 초 동안 offset 적용
+                if (stopline_timer_active) {
+                    auto elapsed = duration_cast<seconds>(now - stopline_start).count();
+                    if (elapsed <= OUT_TIME) {
+                        cross_offset += OUT_OFFSET;
+                    } else {
+                        stopline_timer_active = false; // 기간 종료
+                    }
+                }
                 if (yellow_pixel_count < YELLOW_PIXEL_THRESHOLD) {
                     drive_state_ = DriveState::DRIVE;
                     ROI_REMOVE_LEFT = false;
@@ -206,7 +218,11 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line,
             if (drive_state_ == DriveState::STOP_AT_START_LINE ||
                 drive_state_ == DriveState::WAIT_AFTER_CROSSWALK) {
                 throttle_ = 0.0f;
-            } else {
+            }
+            else if (drive_state_ == DriveState::DRIVE && WHITE_LINE_DRIVE){
+                throttle_ = computeThrottle(cross_offset) + WHITE_LINE_THROTTLE;
+            }
+            else{
                 throttle_ = computeThrottle(cross_offset);
             }
             // 스티어링 설정: 차선 오프셋 기반 계산

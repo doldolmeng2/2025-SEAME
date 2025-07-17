@@ -158,8 +158,8 @@ bool ObjectDetector::detectCrosswalk(const cv::Mat& grayscale, cv::Mat& vis_out,
 }
 
 bool ObjectDetector::detectStartLine(const cv::Mat& grayscale, cv::Mat& vis_out, int height, int width) {
-    int y1 = static_cast<int>(height * 0.5);
-    int y2 = static_cast<int>(height * 0.8);
+    int y1 = static_cast<int>(height * 0.4);
+    int y2 = static_cast<int>(height * 1);
     int x1 = static_cast<int>(width * 0.2);
     int x2 = static_cast<int>(width * 0.8);
 

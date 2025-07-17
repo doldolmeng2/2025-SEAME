@@ -1,4 +1,3 @@
-// constants.hpp
 #pragma once
 #include <string>
 #include <nlohmann/json.hpp>
@@ -80,18 +79,18 @@ namespace Constants {
     // Control gains & limits
     extern float  STEERING_OFFSET;
     extern float  STEERING_OFFSET_2;
-    // constants.hpp
-    extern const float STEERING_KP;
-    extern const float STEERING_KI;
-    extern const float STEERING_KD;
-    extern const float THROTTLE_KP;
-    extern const float BASE_THROTTLE;
-    extern const float BASE_THROTTLE_LOW;
-    extern const float BASE_THROTTLE_YELLOW;
-    extern const float MAX_THROTTLE;
-    extern const int YELLOW_PIXEL_THRESHOLD;
-    extern const int DEFAULT_LANE_GAP;
 
+    // 상수들을 `const`로 선언하지 않음
+    extern int YELLOW_PIXEL_THRESHOLD;
+    extern int DEFAULT_LANE_GAP;
+    extern float STEERING_KP;
+    extern float STEERING_KI;
+    extern float STEERING_KD;
+    extern float THROTTLE_KP;
+    extern float BASE_THROTTLE;
+    extern float BASE_THROTTLE_LOW;
+    extern float BASE_THROTTLE_YELLOW;
+    extern float MAX_THROTTLE;
 
     // JSON 에서 상수를 로드
     void loadConstants(const std::string& path);

@@ -1,4 +1,3 @@
-// constants.cpp
 #include "constants.hpp"
 #include <fstream>
 #include <stdexcept>

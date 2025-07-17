@@ -59,6 +59,14 @@ int YELLOW_ROI_REMOVE_DELAY;
 DriveState INITIAL_DRIVE_STATE;
 std::vector<std::string> DRIVE_STATE_LIST;
 
+DriveState parseDriveState(const std::string& str) {
+    if (str == "DRIVE") return DriveState::DRIVE;
+    else if (str == "WAIT_AFTER_CROSSWALK") return DriveState::WAIT_AFTER_CROSSWALK;
+    else if (str == "STOP_AT_START_LINE") return DriveState::STOP_AT_START_LINE;
+    else if (str == "YELLOW_LINE_DRIVE") return DriveState::YELLOW_LINE_DRIVE;
+    else throw std::runtime_error("알 수 없는 DriveState 문자열: " + str);
+}
+
 void load_constants(const std::string& path) {
     std::ifstream file(path);
     if (!file.is_open()) {
@@ -123,12 +131,3 @@ void load_constants(const std::string& path) {
     DRIVE_STATE_LIST = j["DRIVE_STATES"].get<std::vector<std::string>>();
     INITIAL_DRIVE_STATE = parseDriveState(j["INITIAL_DRIVE_STATE"]);
 }
-
-DriveState parseDriveState(const std::string& str) {
-    if (str == "DRIVE") return DriveState::DRIVE;
-    else if (str == "WAIT_AFTER_CROSSWALK") return DriveState::WAIT_AFTER_CROSSWALK;
-    else if (str == "STOP_AT_START_LINE") return DriveState::STOP_AT_START_LINE;
-    else if (str == "YELLOW_LINE_DRIVE") return DriveState::YELLOW_LINE_DRIVE;
-    else throw std::runtime_error("알 수 없는 DriveState 문자열: " + str);
-}
-

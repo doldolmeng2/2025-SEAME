@@ -11,13 +11,6 @@
 namespace py = pybind11;  // pybind11 네임스페이스 별칭
 using namespace std::chrono;  // 시간 관련 유틸 사용
 
-// 전역 상태 변수들
-bool crosswalk_flag = false;               // 횡단보도 감지 플래그 (한 번만 처리)
-bool crosswalk_ignore_stopline = false;    // 횡단보도 후 정지선 무시 여부
-steady_clock::time_point crosswalk_resume_time;  // 정지선 무시 기간 시작 시간 저장
-steady_clock::time_point yellow_mode_start_time_;
-steady_clock::time_point wait_start_time_; // 횡단보도 감지된 시점
-
 // Python 객체(piracer, gamepad)를 감싸는 내부 구현 구조체
 struct __attribute__((visibility("hidden"))) Controller::Impl {
     py::object piracer_;   // PiRacerPro Python 객체

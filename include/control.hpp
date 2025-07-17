@@ -16,9 +16,14 @@ public:
     void update(bool stop_line, bool crosswalk, bool start_line, int cross_offset, int yellow_pixel_count);
 
 private:
-    // ── 기존 멤버 ──
     DriveState drive_state_; // enum DriveState의 원소 drive_state_
-    std::chrono::steady_clock::time_point wait_start_time_;
+    
+    bool crosswalk_flag = false;               // 횡단보도 감지 플래그 (한 번만 처리)
+    bool crosswalk_ignore_stopline = false;    // 횡단보도 후 정지선 무시 여부
+    std::chrono::steady_clock::time_point crosswalk_resume_time;  // 정지선 무시 기간 시작 시간 저장
+    std::chrono::steady_clock::time_point yellow_mode_start_time_;
+    std::chrono::steady_clock::time_point wait_start_time_; // 횡단보도 감지된 시점
+    
     float steering_;
     float throttle_;
     bool last_manual_mode_;
@@ -29,7 +34,6 @@ private:
     struct Impl;
     Impl* impl_;
 
-    // ── 추가할 멤버 ──
     std::atomic<bool>   manual_mode_{false};
     std::atomic<float>  manual_throttle_{0.0f};
     std::atomic<float>  manual_steering_{0.0f};

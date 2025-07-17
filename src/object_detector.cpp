@@ -113,7 +113,7 @@ bool ObjectDetector::detectStopLine(const cv::Mat& grayscale, cv::Mat& vis_out, 
     }
 
     float ratio = static_cast<float>(max_area) / roi_area;
-    if (ratio >= 0.35 && max_index >= 0) {
+    if (ratio >= STOPLINE_DETECTION_THRESHOLD && max_index >= 0) {
         int x = stats.at<int>(max_index, cv::CC_STAT_LEFT);
         int y = stats.at<int>(max_index, cv::CC_STAT_TOP);
         int w = stats.at<int>(max_index, cv::CC_STAT_WIDTH);

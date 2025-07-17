@@ -32,6 +32,8 @@ Controller::Controller()
       manual_throttle_(0.0f),            // 수동 입력용 스로틀
       manual_steering_(0.0f),            // 수동 입력용 스티어링
       gamepad_running_(false)            // 게임패드 스레드 실행 플래그 초기화
+      last_manual_mode_(true)            // 자동 -> 수동 변경시 리셋
+
 {
     try {
         // Python 인터프리터 시작
@@ -78,7 +80,7 @@ Controller::~Controller() {
     py::finalize_interpreter(); // Python 인터프리터 종료
 }
 
-// ▶️ 게임패드 입력 전용 스레드 시작 함수
+//게임패드 입력 전용 스레드 시작 함수
 void Controller::startGamepadThread() {
     gamepad_running_ = true;
     gamepad_thread_ = std::thread([this]() {
@@ -93,6 +95,22 @@ void Controller::startGamepadThread() {
                 // A 버튼 누르면 수동 모드, B 버튼 누르면 자동 모드 전환
                 if (py::bool_(data.attr("button_a"))) manual_mode_ = true;
                 if (py::bool_(data.attr("button_b"))) manual_mode_ = false;
+
+                if (last_manual_mode_ != manual_mode_) {
+                    std::cout << "[INFO] 모드 전환 감지됨: "
+                    << (manual_mode_ ? "수동 모드로 전환" : "자동 모드로 전환\n") << std::endl;
+                    last_manual_mode_ = manual_mode_;
+
+                    //수동 모드로 전환될 때 상태 초기화
+                    if (manual_mode_) {
+                        drive_state_ = DriveState::DRIVE;
+                        crosswalk_flag = false;
+                        crosswalk_ignore_stopline = false;
+                        ROI_REMOVE_LEFT = false;
+                        WHITE_LINE_DRIVE = true;
+                        std::cout << "[INFO] 수동 모드 진입 -> 내부 상태 초기화 완료\n";
+                    }
+                }
 
                 // 우측 스틱 Y축 -> throttle, 좌측 스틱 X축 -> steering
                 manual_throttle_ = data.attr("analog_stick_right").attr("y").cast<float>() * 0.5f;
@@ -120,7 +138,7 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     try {
         if (manual_mode_) {
             // 수동 모드: 조이스틱 입력값 그대로 적용
-            throttle_ = manual_throttle_;
+            throttle_ = manual_throttle_ - 0.25f;
             steering_ = manual_steering_;
         } else {
             // 자동 모드: 상태 머신 기반 제어

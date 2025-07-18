@@ -113,7 +113,7 @@ void Controller::startGamepadThread() {
                 }
 
                 // 우측 스틱 Y축 -> throttle, 좌측 스틱 X축 -> steering
-                manual_throttle_ = 0.0f;
+                manual_throttle_ = data.attr("analog_stick_right").attr("y").cast<float>();
                 manual_steering_ = data.attr("analog_stick_left").attr("x").cast<float>();
             }
             catch (const std::exception& e) {

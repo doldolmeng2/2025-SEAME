@@ -113,7 +113,7 @@ void Controller::startGamepadThread() {
                 }
 
                 // 우측 스틱 Y축 -> throttle, 좌측 스틱 X축 -> steering
-                manual_throttle_ = data.attr("analog_stick_right").attr("y").cast<float>() * 0.5f;
+                manual_throttle_ = 0.0f;
                 manual_steering_ = data.attr("analog_stick_left").attr("x").cast<float>();
             }
             catch (const std::exception& e) {
@@ -230,12 +230,36 @@ void Controller::update(bool stop_line, bool crosswalk, bool start_line, int cro
     //           << " | throttle: " << throttle_ << "\n";
 }
 
-// computeSteering: 오프셋 기반 조향 계산 (비례 제어 + 범위 제한)
+// computeSteering: 오프셋 기반 PID 제어 (비례 제어 + 범위 제한)
 float Controller::computeSteering(int offset) const {
-    return std::clamp(STEERING_OFFSET + STEERING_KP * offset, -0.7f, 0.7f);
+    // PID 제어 계산 (Ki, Kd는 0으로 설정하여 P 제어만 적용)
+    static float prev_error = 0.0f; // 이전 오차 저장
+    static float integral = 0.0f;   // 적분 값
+
+    // PID 파라미터 (constants에서 값을 가져옴)
+    float Kp = STEERING_KP;
+    float Ki = STEERING_KI;  // 적분 제어
+    float Kd = STEERING_KD;  // 미분 제어
+
+    // 오차 계산
+    float error = offset;  // 차선 오프셋을 오차로 사용
+
+    // 적분 및 미분 계산
+    integral += error;
+    float derivative = error - prev_error;
+
+    // PID 계산 (P + I + D)
+    float control_signal = Kp * error + Ki * integral + Kd * derivative;
+
+    // 이전 오차 저장
+    prev_error = error;
+
+    // 범위 제한 (-0.7f ~ 0.7f)
+    return std::clamp(control_signal, -0.7f, 0.7f);
 }
 
-// computeThrottle: 현재 고정 스로틀 반환 (추후 속도 제어 로직 보완 가능)
-float Controller::computeThrottle(int /*offset*/) const {
-    return BASE_THROTTLE;
+// computeThrottle: P 제어 적용 (오프셋에 비례하는 스로틀 계산)
+float Controller::computeThrottle(int offset) const {
+    // P 제어로 스로틀 값 계산
+    return BASE_THROTTLE + THROTTLE_KP * offset;  // P 제어 (offset에 비례)
 }

@@ -14,10 +14,7 @@ int VALID_V_MIN;
 int YELLOW_H_MIN;
 int YELLOW_H_MAX;
 bool VIEWER;
-float STEERING_KP;
-float THROTTLE_KP;
 float MAX_THROTTLE;
-float BASE_THROTTLE;
 int WAIT_SECONDS;
 int RED_H_MIN1;
 int RED_H_MIN2;
@@ -55,6 +52,11 @@ float GFT_CORNER_QUALITY_LEVEL;
 int GFT_MIN_CORNER_DISTANCE;
 float STEERING_OFFSET;
 float STEERING_OFFSET_2;
+float STEERING_KP;  // 조향 PID 비례 상수
+float STEERING_KI;  // 조향 PID 적분 상수
+float STEERING_KD;  // 조향 PID 미분 상수
+float THROTTLE_KP; // 스로틀 P 상수
+float BASE_THROTTLE; // 기본 스로틀 값
 
 void load_constants(const std::string& path) {
     std::ifstream file(path);
@@ -116,4 +118,6 @@ void load_constants(const std::string& path) {
     GFT_MIN_CORNER_DISTANCE = j["GFT_MIN_CORNER_DISTANCE"];
     STEERING_OFFSET = j["STEERING_OFFSET"];
     STEERING_OFFSET_2 = j["STEERING_OFFSET_2"];
+    STEERING_KI = j["STEERING_KI"];
+    STEERING_KD = j["STEERING_KD"];
 }

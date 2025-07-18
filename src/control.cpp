@@ -12,10 +12,11 @@ Controller::Controller()
       steering_(-0.25f),                                   // 기본 조향 값
       throttle_(0.0f)                                      // 기본 스로틀 값
 {
+    py::gil_scoped_acquire gil;
     impl_ = std::make_unique<Impl>();  // Impl 객체 초기화
 
     try {
-        py::initialize_interpreter();  // Python 인터프리터 초기화
+        // py::initialize_interpreter();  // Python 인터프리터 초기화
 
         // PiRacerPro 객체 생성 (파이썬 모듈에서 가져옴)
         auto piracer_module = py::module_::import("piracer.vehicles");
@@ -48,6 +49,7 @@ void Controller::setManualMode(bool manual) {
 }
 
 void Controller::update(bool stopLine, bool crosswalk, bool startLine, int laneOffset, int yellowCount) {
+    py::gil_scoped_acquire gil;
     if (manualMode_) {
         // 수동 모드에서는 Python 객체와 상호작용 없이 직접 조향과 스로틀 설정
         impl_->piracer_.attr("set_steering")(steering_);

@@ -46,8 +46,8 @@ public:
 
         try {
             // Python에서 PiRacer 객체를 불러옴
-            py::object piracer_mod = py::module_::import("piracer");
-            piracer_ = piracer_mod.attr("PiRacerProPlatform")();
+            py::object vehicles_mod = py::module_::import("piracer.vehicles");
+            piracer_ = vehicles_mod.attr("PiRacerPro")();
         } catch (const std::exception& e) {
             std::cerr << "[ERROR] piracer import 실패: " << e.what() << "\n";
             return false;
@@ -98,14 +98,17 @@ private:
     void cameraLoop() {
         while (running) {
             cv::Mat frame = cam_.getFrame();  // 카메라에서 프레임 캡처
-            if (frame.empty()) continue;  // 프레임이 비어 있으면 건너뛰기
-
+            if (frame.empty()) {
+                std::cerr << "[ERROR] 빈 프레임을 읽었습니다. 계속 시도합니다.\n";
+                continue;  // 프레임이 비어 있으면 건너뛰기
+            }
             {
                 std::lock_guard lk(frameMutex);
                 sharedFrame = std::make_shared<cv::Mat>(frame);
                 if (!firstFrameArrived) {
                     firstFrameArrived = true;
                     firstFrameCv.notify_all();  // 첫 번째 프레임 도착 대기
+                    std::cerr << "[INFO] 첫 번째 프레임 도착" << std::endl;
                 }
             }
 
@@ -164,11 +167,13 @@ private:
     // 차량 제어 스레드
     void controlLoop() {
         Controller ctrl;
-        waitFirstFrame();  // 첫 번째 프레임이 도착할 때까지 대기
+        waitFirstFrame();  // 첫 번째 프레임이 도달할 때까지 대기
         while (running) {
             std::unique_lock ul(controlMutex);
             controlCv.wait(ul, [this]{ return controlReady; });  // 제어 대기
-            controlReady = false;
+            std::cerr << "[INFO] 제어 스레드 시작, controlReady: " << controlReady << std::endl;  // 디버깅 메시지
+
+            controlReady = false;  // 제어 후에는 반드시 false로 리셋해야 함
 
             int offset, yellow;
             std::vector<bool> flags;
@@ -186,11 +191,7 @@ private:
             // 차량 제어 업데이트
             ctrl.update(flags[0], flags[1], flags[2], offset, yellow);  
 
-            // 이제 Controller에서 직접 제어하므로, main에서 조향값을 전달하지 않음
-            // impl_->piracer_.attr("set_steering")(ctrl.getSteering());
-            // impl_->piracer_.attr("set_throttle")(ctrl.getThrottle());
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));  // 적절한 대기 시간
         }
     }
 
@@ -198,6 +199,7 @@ private:
     void waitFirstFrame() {
         std::unique_lock ul(frameMutex);
         firstFrameCv.wait(ul, [this]{ return firstFrameArrived; });
+        std::cerr << "[INFO] 첫 번째 프레임 대기 종료" << std::endl;  // 추가된 디버깅 메시지
     }
 
     // 제어 스레드에 알리는 함수
@@ -207,6 +209,7 @@ private:
             controlReady = true;
         }
         controlCv.notify_one();
+        std::cerr << "[INFO] 제어 스레드 알림" << std::endl;  // 디버깅 메시지
     }
 
     // 모드 파싱 함수 (주행 모드 설정)

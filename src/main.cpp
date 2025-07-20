@@ -15,7 +15,6 @@
 #include "usb_cam.hpp" // USB 카메라 래퍼 클래스
 #include "video_recorder.hpp" // 비디오 녹화 클래스
 #include "lane_detector.hpp" // 차선 검출 클래스
-#include "object_detector.hpp" // 객체 검출 클래스
 #include "control.hpp" // 조향 제어 클래스
 #include "constants.hpp" // 상수 정의 및 로드
 
@@ -25,10 +24,6 @@ static std::shared_ptr<cv::Mat> shared_frame = nullptr; // 최신 프레임 저�
 
 static std::mutex lane_mutex; // 차선 오프셋 동기화용 뮤텍스
 static std::atomic<int> mean_center_offset{0}; // 차선 중심 오프셋 (원자 변수)
-std::atomic<int> yellow_pixel_count{0};  // lane_detector의 결과를 공유
-
-static std::mutex object_mutex; // 객체 검출 플래그 동기화용 뮤텍스
-static std::vector<bool> detections_flags(3, false); // 객체 검출 결과 플래그 (stop, cross, start)
 
 static std::condition_variable control_cv; // 제어 스레드 알림용 조건 변수
 static std::mutex control_mutex; // 제어 조건 변수용 뮤텍스
@@ -156,7 +151,6 @@ int main(int argc, char** argv) {
 
     // DRIVE, DRIVE_RECORD 모드에서만 실행할 스레드
     std::thread lane_thread;
-    std::thread object_thread;
     std::thread control_thread;
     if (current_mode == Mode::DRIVE || current_mode == Mode::DRIVE_RECORD) {
         // 차선 검출 스레드
@@ -171,7 +165,6 @@ int main(int argc, char** argv) {
                 if (frame && !frame->empty()) {
                     cv::Mat vis_out;
                     int offset = lanedetector.process(*frame, vis_out); // 차선 오프셋 계산
-                    yellow_pixel_count = lanedetector.getYellowPixelCount();
                     {
                         std::lock_guard<std::mutex> lock(lane_mutex);
                         mean_center_offset = offset; // 전역 오프셋 갱신
@@ -190,37 +183,6 @@ int main(int argc, char** argv) {
             }
         });
 
-        // 객체 검출 스레드
-        object_thread = std::thread([&]() {
-            ObjectDetector detector;
-            while (running.load()) {
-                std::shared_ptr<cv::Mat> frame;
-                {
-                    std::lock_guard<std::mutex> lock(frame_mutex);
-                    frame = shared_frame;
-                }
-                if (frame && !frame->empty()) {
-                    cv::Mat vis_out;
-                    std::vector<bool> flags;
-                    detector.process(*frame, vis_out, flags); // 객체 검출
-                    {
-                        std::lock_guard<std::mutex> lock(object_mutex);
-                        detections_flags = flags; // 검출 결과 저장
-                    }
-                    {
-                        std::lock_guard<std::mutex> lock(control_mutex);
-                        control_ready = true;
-                        control_cv.notify_one(); // 제어 스레드 실행 알림
-                    }
-                    if (VIEWER) {
-                        cv::imshow("Objects", vis_out);
-                        if (cv::waitKey(1) == 27) running = false;
-                    }
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-        });
-
         // 조향 제어 스레드
         control_thread = std::thread([&]() {
             Controller controller;
@@ -231,20 +193,12 @@ int main(int argc, char** argv) {
                 lock.unlock();
 
                 // 최근 검출 결과 가져오기
-                bool stop = false, cross = false, start = false;
                 int offset = 0;
                 {
                     std::lock_guard<std::mutex> lock(lane_mutex);
                     offset = mean_center_offset;
                 }
-                {
-                    std::lock_guard<std::mutex> lock(object_mutex);
-                    if (detections_flags.size() > 0) stop = detections_flags[0];
-                    if (detections_flags.size() > 1) cross = detections_flags[1];
-                    if (detections_flags.size() > 2) start = detections_flags[2];
-                }
-                int yellow_count = yellow_pixel_count.load();
-		            controller.update(stop, cross, start, offset, yellow_count);
+		        controller.update(offset);
                 std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 제어 주기 조절
             }
         });
@@ -253,7 +207,6 @@ int main(int argc, char** argv) {
     // 스레드 종료 대기
     camera_thread.join();
     if (lane_thread.joinable()) lane_thread.join();
-    if (object_thread.joinable()) object_thread.join();
     if (control_thread.joinable()) control_thread.join();
 
     // 비디오 녹화 자원 해제

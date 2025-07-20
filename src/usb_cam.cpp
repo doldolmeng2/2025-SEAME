@@ -11,9 +11,9 @@
 bool USBCam::init() {
     std::string pipeline =
         "v4l2src device=/dev/video0 ! "
-        "bayer2rgb ! "
+        "jpegdec ! "
         "videoconvert ! "
-        "videoscale ! video/x-raw,width=640,height=240 ! "
+        "video/x-raw, format=BGR ! "
         "appsink";
 
     cap.open(pipeline, cv::CAP_GSTREAMER);

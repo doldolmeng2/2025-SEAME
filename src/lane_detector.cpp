@@ -66,17 +66,22 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
     cv::Mat white_mask = (s < WHITE_S_MAX) & (v >= WHITE_V_MIN) & valid_mask;
     cv::Mat yellow_mask = valid_mask & (~white_mask) & (h >= YELLOW_H_MIN) & (h <= YELLOW_H_MAX);
 
-    // if (VIEWER) {
-    //     cv::imshow("roi_mask", roi_mask);
-    //     cv::waitKey(1);
-    // }
+    // 흰색=255, 노란색=127
+    cv::Mat grayscale = cv::Mat::zeros(v.size(), CV_8UC1);
+    grayscale.setTo(255, white_mask);
+    grayscale.setTo(127, yellow_mask);
+
+    if (VIEWER) {
+        cv::imshow("Grayscale Lane", grayscale);
+        cv::waitKey(1);
+    }
 
     vis_out = frame.clone();
     std::vector<int> target_rows = { static_cast<int>(height * 0.35f), static_cast<int>(height * 0.65f) };
     std::vector<cv::Point> lane_points;
 
     for (int y : target_rows) {
-        const uchar* row_ptr = (WHITE_LINE_DRIVE ? white_mask.ptr<uchar>(y) : yellow_mask.ptr<uchar>(y));
+        const uchar* row_ptr = white_mask.ptr<uchar>(y);
         auto blobs = findBlobs(row_ptr, width);
 
         if (blobs.size() >= 2) {
@@ -132,13 +137,7 @@ int LaneDetector::process(const cv::Mat& frame, cv::Mat& vis_out) {
                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
     cv::putText(vis_out, "int: " + std::to_string(inter_offset), cv::Point(10, 50),
                 cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255), 2);
-
-    yellow_pixel_count_ = cv::countNonZero(yellow_mask);
     return static_cast<int>(control);
-}
-
-int LaneDetector::getYellowPixelCount() const {
-    return yellow_pixel_count_;
 }
 
 cv::Mat LaneDetector::createTrapezoidMask(int height, int width) {
